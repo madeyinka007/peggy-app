@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@peggy/config": ["packages/config/src/index.ts"],
+      "@peggy/db": ["packages/db/src/index.ts"],
+      "@peggy/domain": ["packages/domain/src/index.ts"],
+      "@peggy/auth": ["packages/auth/src/index.ts"],
+      "@peggy/storage": ["packages/storage/src/index.ts"],
+      "@peggy/http": ["packages/http/src/index.ts"],
+      "@peggy/shared": ["packages/shared/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".nx"]
+}

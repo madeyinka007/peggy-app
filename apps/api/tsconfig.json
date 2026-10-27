@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true,
+    "noEmit": false
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../packages/config"
+    },
+    {
+      "path": "../../packages/db"
+    },
+    {
+      "path": "../../packages/auth"
+    },
+    {
+      "path": "../../packages/http"
+    },
+    {
+      "path": "../../packages/shared"
+    }
+  ]
+}

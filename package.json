@@ -1,0 +1,31 @@
+{
+  "name": "peggy",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Peggy CMS \u2014 developer-focused headless CMS and scaffolding platform",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "pnpm nx run-many -t build",
+    "typecheck": "pnpm nx run-many -t typecheck",
+    "lint": "pnpm nx run-many -t lint",
+    "test": "pnpm nx run-many -t test",
+    "doctor": "pnpm --filter @peggy/config doctor"
+  },
+  "devDependencies": {
+    "eslint": "9.15.0",
+    "nx": "20.0.0",
+    "prettier": "3.4.2",
+    "typescript": "5.6.3"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "dependencies": {
+    "pnpm": "^9.15.9"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
