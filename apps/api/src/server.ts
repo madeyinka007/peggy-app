@@ -5,6 +5,9 @@ import { createAuth } from "@peggy/auth";
 import { parseConfig } from "@peggy/config";
 import { rbacRouter } from "./routes/rbac.js";
 import { tokensRouter } from "./routes/tokens.js";
+import { contentTypesRouter } from "./routes/content-types.js";
+import { componentsRouter } from "./routes/components.js";
+import { openapiRouter } from "./openapi.js";
 
 const config = parseConfig();
 const db = createDbClient(config.DATABASE_URL);
@@ -20,6 +23,9 @@ const app = createApp({
   routes: (app) => {
     app.use("/api/v1", rbacRouter);
     app.use("/api/v1", tokensRouter);
+    app.use("/api/v1", contentTypesRouter);
+    app.use("/api/v1", componentsRouter);
+    app.use("/api/v1", openapiRouter);
   },
 });
 

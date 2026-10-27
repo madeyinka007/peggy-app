@@ -15,6 +15,13 @@
       "when": 1793039761356,
       "tag": "0001_dry_wendell_rand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793094403315,
+      "tag": "0002_fine_bromley",
+      "breakpoints": true
     }
   ]
 }
