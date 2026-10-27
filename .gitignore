@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+.next/
+out/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# nx
+.nx/
+
+# serverless
+.serverless/
+
+# os
+.DS_Store
+*.log
+
+# ide
+.vscode/
+.idea/

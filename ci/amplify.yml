@@ -1,0 +1,16 @@
+version: 1
+applications:
+  - appRoot: apps/admin
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - corepack enable && pnpm install --frozen-lockfile
+        build:
+          commands:
+            - pnpm nx run admin:export
+      artifacts:
+        baseDirectory: out
+        files: ["**/*"]
+      cache:
+        paths: ["../../node_modules/**/*", ".next/cache/**/*"]

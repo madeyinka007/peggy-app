@@ -1,0 +1,31 @@
+{
+  "name": "peggy-auth-spike",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "spike:auth": "tsx src/spike-auth.ts",
+    "spike:load": "tsx src/spike-load.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@better-auth/cli": "^1.5.0-beta.13",
+    "@better-auth/drizzle-adapter": "1.7.12",
+    "@neondatabase/serverless": "0.10.4",
+    "better-auth": "1.7.12",
+    "drizzle-kit": "0.31.11",
+    "drizzle-orm": "0.45.4",
+    "express": "4.21.2",
+    "pg": "8.13.1",
+    "serverless-http": "3.2.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.0",
+    "@types/pg": "8.11.10",
+    "autocannon": "8.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  }
+}

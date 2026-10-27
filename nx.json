@@ -1,0 +1,27 @@
+{
+  "affected": {
+    "defaultBase": "main"
+  },
+  "tasksRunnerOptions": {
+    "default": {
+      "runner": "nx/tasks-runners/default",
+      "options": {
+        "cacheableOperations": ["build", "test", "lint", "typecheck"]
+      }
+    }
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["build"]
+    },
+    "lint": {}
+  },
+  "defaultBase": "main"
+}

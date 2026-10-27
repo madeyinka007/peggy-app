@@ -1,0 +1,22 @@
+{
+  "name": "@peggy/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": { "peggy-doctor": "src/doctor.ts" },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "echo \"no tests yet\"",
+    "doctor": "tsx src/doctor.ts"
+  },
+  "dependencies": {
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "tsx": "4.19.2"
+  }
+}
