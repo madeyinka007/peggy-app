@@ -25,6 +25,15 @@ const spec = {
     "/api/v1/components": { get: { summary: "List components" }, post: { summary: "Create component" } },
     "/api/v1/components/{id}": { get: { summary: "Get component" }, put: { summary: "Update component" }, delete: { summary: "Delete component" } },
     "/api/v1/components/{id}/fields": { get: { summary: "List component fields" }, post: { summary: "Create component field" } },
+    "/api/v1/documents": { get: { summary: "List documents" }, post: { summary: "Create document" } },
+    "/api/v1/documents/{id}": { get: { summary: "Get document" }, put: { summary: "Update document" }, delete: { summary: "Delete document" } },
+    "/api/v1/documents/{id}/versions": { get: { summary: "List versions" } },
+    "/api/v1/documents/{id}/restore": { post: { summary: "Restore version" } },
+    "/api/v1/documents/{id}/publish": { post: { summary: "Publish document" } },
+    "/api/v1/documents/{id}/unpublish": { post: { summary: "Unpublish document" } },
+    "/api/v1/public/{collectionSlug}": { get: { summary: "Public query" } },
+    "/api/v1/public/{collectionSlug}/{slug}": { get: { summary: "Public get by slug" } },
+    "/api/v1/locales": { get: { summary: "List locales" }, post: { summary: "Create locale" } },
   },
 };
 

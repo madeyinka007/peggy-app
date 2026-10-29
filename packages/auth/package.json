@@ -16,9 +16,11 @@
     "@peggy/shared": "*",
     "@peggy/config": "*",
     "better-auth": "1.7.12",
-    "zod": "4.3.6"
+    "zod": "4.3.6",
+    "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
-    "tsx": "4.19.2"
+    "tsx": "4.19.2",
+    "vitest": "4.1.12"
   }
 }
