@@ -11,6 +11,12 @@ function getDb() {
   return client.db as ReturnType<typeof drizzle>;
 }
 
+
+async function getDefaultLocale(db: ReturnType<typeof drizzle>): Promise<string> {
+  const rows = await db.select().from(locales).where(eq(locales.isDefault, true));
+  return rows[0]?.code ?? "en";
+}
+
 export async function createDocument(data: {
   contentTypeId: string;
   locale?: string;
@@ -150,7 +156,7 @@ export async function getDocument(id: string, locale?: string, includeDeleted = 
   if (!doc) return null;
   if (doc.deletedAt && !includeDeleted) return null;
 
-  const loc = locale ?? "en";
+  const loc = locale ?? (await getDefaultLocale(db));
   const [dl] = await db.select().from(documentLocales).where(
     and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc))
   );
@@ -167,7 +173,7 @@ export async function getDocument(id: string, locale?: string, includeDeleted = 
 
 export async function listDocuments(contentTypeId: string, locale?: string) {
   const db = getDb();
-  const loc = locale ?? "en";
+  const loc = locale ?? (await getDefaultLocale(db));
   const docs = await db.select().from(documents).where(
     and(eq(documents.contentTypeId, contentTypeId), sql`${documents.deletedAt} IS NULL`)
   );
@@ -189,7 +195,7 @@ export async function updateDocument(id: string, data: {
   createdBy?: string;
 }) {
   const db = getDb();
-  const loc = data.locale ?? "en";
+  const loc = data.locale ?? (await getDefaultLocale(db));
 
   const [doc] = await db.select().from(documents).where(eq(documents.id, id));
   if (!doc) throw new Error("Document not found");
@@ -265,7 +271,7 @@ export async function deleteDocument(id: string) {
 
 export async function getVersionHistory(id: string, locale?: string) {
   const db = getDb();
-  const loc = locale ?? "en";
+  const loc = locale ?? (await getDefaultLocale(db));
   const versions = await db.select().from(documentVersions).where(
     and(eq(documentVersions.documentId, id), eq(documentVersions.locale, loc))
   );
@@ -274,7 +280,7 @@ export async function getVersionHistory(id: string, locale?: string) {
 
 export async function restoreVersion(id: string, version: number, locale?: string, createdBy?: string) {
   const db = getDb();
-  const loc = locale ?? "en";
+  const loc = locale ?? (await getDefaultLocale(db));
 
   const [oldVersion] = await db.select().from(documentVersions).where(
     and(eq(documentVersions.documentId, id), eq(documentVersions.locale, loc), eq(documentVersions.version, version))
