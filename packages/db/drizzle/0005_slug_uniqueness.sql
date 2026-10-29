@@ -12,6 +12,7 @@ BEGIN
     AND dv.locale = NEW.locale
     AND dv.slug = NEW.slug
     AND dv.id <> NEW.id
+    AND dv.document_id <> NEW.document_id
     AND NEW.slug IS NOT NULL;
   IF existing_count > 0 THEN
     RAISE EXCEPTION 'slug conflict: published/ existing document with same slug in locale';

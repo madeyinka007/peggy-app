@@ -289,6 +289,6 @@ With multiple developers:
 
 ## Phase 12: Convergence
 
-- [ ] T081 Add integration/unit tests covering HTTP status codes (200/201/204/404/409/422) for all document endpoints per FR-001–FR-018 / SC-006 (missing)
-- [ ] T082 Add draft-leak prevention test (public query returns 0 rows for draft-only content) per FR-013 / SC-002 (missing)
+- [X] T081 Add integration/unit tests covering HTTP status codes (200/201/204/404/409/422) for all document endpoints per FR-001–FR-018 / SC-006 (done — documents-status.test.ts + smoke runner, 9/9 green on peggy_test)
+- [X] T082 Add draft-leak prevention test (public query returns 0 rows for draft-only content) per FR-013 / SC-002 (done — documents-draft-leak.test.ts, green on peggy_test)
 - [X] T083 Update OpenAPI snapshot to include document, publish, version, and public query routes per T057 / T080 (done — apps/api/src/openapi.ts already lists all document/public/locale routes)
