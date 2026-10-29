@@ -286,3 +286,9 @@ With multiple developers:
 
 - [X] T079 Add optimistic concurrency check on publish (verify draft pointer unchanged) per edge case concurrent publishes (partial)
 - [X] T080 Update OpenAPI snapshot with document routes per T057 (missing)
+
+## Phase 12: Convergence
+
+- [ ] T081 Add integration/unit tests covering HTTP status codes (200/201/204/404/409/422) for all document endpoints per FR-001–FR-018 / SC-006 (missing)
+- [ ] T082 Add draft-leak prevention test (public query returns 0 rows for draft-only content) per FR-013 / SC-002 (missing)
+- [X] T083 Update OpenAPI snapshot to include document, publish, version, and public query routes per T057 / T080 (done — apps/api/src/openapi.ts already lists all document/public/locale routes)

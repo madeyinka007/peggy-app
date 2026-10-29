@@ -2,7 +2,7 @@ import { createDbClient } from "@peggy/db";
 import { parseConfig } from "@peggy/config";
 import type { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and } from "drizzle-orm";
-import { documents, documentVersions, documentLocales } from "@peggy/db";
+import { documents, documentVersions, documentLocales, locales } from "@peggy/db";
 
 function getDb() {
   const config = parseConfig();
@@ -10,15 +10,19 @@ function getDb() {
   return client.db as ReturnType<typeof drizzle>;
 }
 
-export async function publishDocument(documentId: string, locale: string) {
+export async function publishDocument(documentId: string, locale?: string) {
   const db = getDb();
+  const loc = locale ?? (await (async () => {
+    const rows = await db.select().from(locales).where(eq(locales.isDefault, true));
+    return rows[0]?.code ?? "en";
+  })());
 
   const [doc] = await db.select().from(documents).where(eq(documents.id, documentId));
   if (!doc) throw new Error("Document not found");
   if (doc.deletedAt) throw new Error("Document is deleted");
 
   const [dl] = await db.select().from(documentLocales).where(
-    and(eq(documentLocales.documentId, documentId), eq(documentLocales.locale, locale))
+    and(eq(documentLocales.documentId, documentId), eq(documentLocales.locale, loc))
   );
   if (!dl || !dl.draftVersionId) throw new Error("No draft version to publish");
 
@@ -32,7 +36,7 @@ export async function publishDocument(documentId: string, locale: string) {
     );
     for (const row of existing) {
       const pubDv = (row as { document_versions?: { slug?: string; locale?: string; documentId?: string } }).document_versions;
-      if (pubDv?.slug === dv.slug && pubDv?.locale === locale && pubDv?.documentId !== documentId) {
+      if (pubDv?.slug === dv.slug && pubDv?.locale === loc && pubDv?.documentId !== documentId) {
         throw new Error("Slug conflict: a published document with this slug already exists");
       }
     }
@@ -46,16 +50,16 @@ export async function publishDocument(documentId: string, locale: string) {
     updatedAt: now,
   }).where(and(
     eq(documentLocales.documentId, documentId),
-    eq(documentLocales.locale, locale),
+    eq(documentLocales.locale, loc),
     eq(documentLocales.draftVersionId, dl.draftVersionId),
   )).returning();
   if (updatedRows.length === 0) throw new Error("Conflict: draft pointer changed concurrently");
 
   const [updated] = await db.select().from(documentLocales).where(
-    and(eq(documentLocales.documentId, documentId), eq(documentLocales.locale, locale))
+    and(eq(documentLocales.documentId, documentId), eq(documentLocales.locale, loc))
   );
   if (!updated) throw new Error("Failed to update locale");
-  return { documentId, locale, publishedVersionId: updated.publishedVersionId, publishedAt: updated.publishedAt, firstPublishedAt: updated.firstPublishedAt };
+  return { documentId, locale: loc, publishedVersionId: updated.publishedVersionId, publishedAt: updated.publishedAt, firstPublishedAt: updated.firstPublishedAt };
 }
 
 export async function unpublishDocument(documentId: string, locale: string) {

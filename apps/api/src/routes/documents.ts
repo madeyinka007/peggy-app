@@ -133,7 +133,14 @@ publicDocumentsRouter.get("/:collectionSlug", async (req, res) => {
       pageSize: req.query.pageSize ? Number(req.query.pageSize) : 25,
     };
     if (req.query.locale) qp.locale = req.query.locale as string;
-    if (req.query.filters) qp.filters = req.query.filters as Record<string, unknown>;
+    if (req.query.filters) {
+      const raw = req.query.filters;
+      if (typeof raw === "string") {
+        try { qp.filters = JSON.parse(raw) as Record<string, unknown>; } catch { qp.filters = { title: raw } as Record<string, unknown>; }
+      } else {
+        qp.filters = raw as Record<string, unknown>;
+      }
+    }
     if (req.query.sort) qp.sort = req.query.sort as string;
     if (req.query["pagination[page]"]) qp.page = Number(req.query["pagination[page]"]);
     if (req.query["pagination[pageSize]"]) qp.pageSize = Number(req.query["pagination[pageSize]"]);
