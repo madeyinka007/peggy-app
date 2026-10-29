@@ -6,3 +6,7 @@ export * from "./tokens.js";
 export * from "./content-types.js";
 export * from "./fields.js";
 export * from "./components.js";
+export * from "./documents.js";
+export * from "./publishing.js";
+export * from "./versions.js";
+export * from "./query-engine.js";

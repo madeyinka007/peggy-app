@@ -18,6 +18,9 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  await raw.query("DELETE FROM document_locales");
+  await raw.query("DELETE FROM document_versions");
+  await raw.query("DELETE FROM documents");
   await raw.query("DELETE FROM content_fields");
   await raw.query("DELETE FROM schema_versions WHERE owner_kind IN ('content_type','component')");
   await raw.query("DELETE FROM components");
