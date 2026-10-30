@@ -11,5 +11,7 @@
     "lint": "eslint src",
     "test": "echo \"no tests yet\""
   },
-  "dependencies": {}
+  "dependencies": {
+    "cloudinary": "^1.41.0"
+  }
 }

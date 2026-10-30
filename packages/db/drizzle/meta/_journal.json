@@ -29,6 +29,27 @@
       "when": 1793100396819,
       "tag": "0003_stormy_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793300000004,
+      "tag": "0004_convergence",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793300000005,
+      "tag": "0005_slug_uniqueness",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793318564087,
+      "tag": "0006_media_library",
+      "breakpoints": true
     }
   ]
 }
