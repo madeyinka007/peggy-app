@@ -11,11 +11,11 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@peggy/config": "*",
-    "@peggy/db": "*",
-    "@peggy/auth": "*",
-    "@peggy/http": "*",
-    "@peggy/shared": "*",
+    "@peggy/config": "workspace:*",
+    "@peggy/db": "workspace:*",
+    "@peggy/auth": "workspace:*",
+    "@peggy/http": "workspace:*",
+    "@peggy/shared": "workspace:*",
     "express": "4.21.2",
     "serverless-http": "3.2.0"
   },

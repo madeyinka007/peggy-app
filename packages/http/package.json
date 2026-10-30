@@ -12,10 +12,10 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
-    "@peggy/shared": "*",
+    "@peggy/shared": "workspace:*",
     "express": "4.21.2",
     "better-auth": "1.7.12",
-    "@peggy/db": "*"
+    "@peggy/db": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "5.0.0",

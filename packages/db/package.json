@@ -12,7 +12,7 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
-    "@peggy/shared": "*",
+    "@peggy/shared": "workspace:*",
     "drizzle-orm": "0.45.4",
     "pg": "8.13.1",
     "@neondatabase/serverless": "0.10.4"
