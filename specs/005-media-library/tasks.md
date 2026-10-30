@@ -208,3 +208,9 @@
 - Constitution P-03 (Cloudinary SDK confinement) is NON-NEGOTIABLE — enforced by SC-005 arch test
 - Ledger writes (`media_usage`) must be in the same transaction as version creation (research.md Decision 3)
 - Folder-path logic is trigger-maintained (Decision 4) with service-level defense-in-depth
+
+## Phase 8: Convergence
+
+- [ ] T034 Move the 413 Content-Length guard before body parsing (express.json limit is 1mb, so the media route guard never fires for large payloads) per FR-003 / SC-001 (partial)
+- [ ] T035 Add audit logging for media delete (force), replace, and folder delete operations per US4/AC2 (missing)
+- [ ] T036 Mark implemented tasks T001-T029, T031, T033 complete in tasks.md to reflect the shipped implementation (missing)
