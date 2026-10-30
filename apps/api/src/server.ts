@@ -2,6 +2,8 @@ import { createApp } from "@peggy/http";
 import type { AuthInstance } from "@peggy/http";
 import { createDbClient } from "@peggy/db";
 import { createAuth } from "@peggy/auth";
+import { CloudinaryProvider } from "@peggy/storage";
+import { initMediaService } from "./routes/media.js";
 import { parseConfig } from "@peggy/config";
 import { rbacRouter } from "./routes/rbac.js";
 import { tokensRouter } from "./routes/tokens.js";
@@ -14,6 +16,10 @@ import { openapiRouter } from "./openapi.js";
 const config = parseConfig();
 const db = createDbClient(config.DATABASE_URL);
 const auth = createAuth();
+
+// Share one db client + provider across all media requests (avoids a new
+// pool/client per call). Must run before routes handle requests.
+initMediaService(db.db as never, new CloudinaryProvider());
 
 const app = createApp({
   auth: auth as AuthInstance,

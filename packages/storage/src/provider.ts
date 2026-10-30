@@ -38,7 +38,7 @@ export interface TransformPreset {
 }
 
 export interface StorageProvider {
-  signUpload(req: SignRequest): Promise<{ url: string; params: SignParams }>;
+  signUpload(req: SignRequest): Promise<{ url: string; params: Record<string, string | number | undefined> }>;
   verifyAsset(providerKey: string): Promise<{ exists: boolean; width?: number; height?: number; mime?: string; sizeBytes?: number }>;
   transformUrl(providerKey: string, opts: TransformPreset, cloudName?: string): string;
   destroy(providerKey: string): Promise<void>;

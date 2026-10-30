@@ -255,57 +255,62 @@ export async function updateDocument(id: string, data: {
     }
   }
 
-  const [dl] = await db.select().from(documentLocales).where(
-    and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc))
-  );
-  if (!dl) throw new Error("Locale not found");
+  // Version insert + locale update + ledger writes in one transaction so a
+  // failure anywhere rolls back (otherwise the doc is updated while
+  // media_usage is stale, silently defeating the delete guard).
+  return await db.transaction(async (tx) => {
+    const [dl] = await tx.select().from(documentLocales).where(
+      and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc))
+    );
+    if (!dl) throw new Error("Locale not found");
 
-  // Get current max version
-  const versions = await db.select().from(documentVersions).where(
-    and(eq(documentVersions.documentId, doc.id), eq(documentVersions.locale, loc))
-  );
-  const maxVersion = versions.reduce((max, v) => Math.max(max, v.version), 0);
+    // Get current max version
+    const versions = await tx.select().from(documentVersions).where(
+      and(eq(documentVersions.documentId, doc.id), eq(documentVersions.locale, loc))
+    );
+    const maxVersion = versions.reduce((max, v) => Math.max(max, v.version), 0);
 
-  const [newVersion] = await db.insert(documentVersions).values({
-    documentId: doc.id,
-    locale: loc,
-    version: maxVersion + 1,
-    status: "draft",
-    data: data.data,
-    schemaVersion: ct.activeSchemaVersion,
-    slug,
-    createdBy: data.createdBy ?? null,
-  }).returning();
-  if (!newVersion) throw new Error("Failed to create version");
+    const [newVersion] = await tx.insert(documentVersions).values({
+      documentId: doc.id,
+      locale: loc,
+      version: maxVersion + 1,
+      status: "draft",
+      data: data.data,
+      schemaVersion: ct.activeSchemaVersion,
+      slug,
+      createdBy: data.createdBy ?? null,
+    }).returning();
+    if (!newVersion) throw new Error("Failed to create version");
 
-  await db.update(documentLocales).set({
-    draftVersionId: newVersion.id,
-    updatedAt: new Date(),
-  }).where(and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc)));
+    await tx.update(documentLocales).set({
+      draftVersionId: newVersion.id,
+      updatedAt: new Date(),
+    }).where(and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc)));
 
-  // Ledger: record media asset references in media_usage (best-effort)
-  const mediaFields2 = fields.filter((f) => f.fieldType === "media");
-  for (const mf of mediaFields2) {
-    const val = data.data[mf.name];
-    const ids: string[] = [];
-    if (typeof val === "string") ids.push(val);
-    else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
-    else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
-    for (const aid of ids) {
-      const existing = await db.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
-      if (existing.length > 0) {
-        await db.insert(mediaUsage).values({
-          assetId: aid,
-          documentId: doc.id,
-          locale: loc,
-          fieldPath: mf.name,
-          versionId: newVersion.id,
-        }).onConflictDoNothing();
+    // Ledger: record media asset references in media_usage (same transaction)
+    const mediaFields2 = fields.filter((f) => f.fieldType === "media");
+    for (const mf of mediaFields2) {
+      const val = data.data[mf.name];
+      const ids: string[] = [];
+      if (typeof val === "string") ids.push(val);
+      else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
+      else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
+      for (const aid of ids) {
+        const existing = await tx.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
+        if (existing.length > 0) {
+          await tx.insert(mediaUsage).values({
+            assetId: aid,
+            documentId: doc.id,
+            locale: loc,
+            fieldPath: mf.name,
+            versionId: newVersion.id,
+          }).onConflictDoNothing();
+        }
       }
     }
-  }
 
-  return { ...doc, locale: loc, version: newVersion.version, data: newVersion.data, schemaVersion: newVersion.schemaVersion };
+    return { ...doc, locale: loc, version: newVersion.version, data: newVersion.data, schemaVersion: newVersion.schemaVersion };
+  });
 }
 
 export async function deleteDocument(id: string) {
