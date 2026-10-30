@@ -1,8 +1,9 @@
 import { createDbClient } from "@peggy/db";
 import type { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, sql } from "drizzle-orm";
-import { mediaFolders, mediaAssets, mediaUsage, contentTypes, contentFields } from "@peggy/db";
+import { mediaFolders, mediaAssets, mediaUsage, documentLocales } from "@peggy/db";
 import { CloudinaryProvider } from "./cloudinary-provider.js";
+import type { StorageProvider } from "./provider.js";
 import { parseConfig } from "@peggy/config";
 import { createLogger } from "@peggy/shared";
 
@@ -35,8 +36,19 @@ function allowedMime(mime: string): boolean {
   return ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p));
 }
 
+type Db = ReturnType<typeof getDb>;
+
 export class MediaService {
-  private provider = new CloudinaryProvider();
+  private readonly db: Db;
+  private readonly provider: StorageProvider;
+
+  constructor(db?: Db, provider?: StorageProvider) {
+    // Shared client injected by the caller (server.ts / lambda.ts construct
+    // one per process). Falls back to a local default so existing
+    // `new MediaService()` call sites keep working.
+    this.db = db ?? getDb();
+    this.provider = provider ?? new CloudinaryProvider();
+  }
 
   async signUpload(req: { filename: string; mime: string; sizeBytes: number; folderId?: string }) {
     if (!allowedMime(req.mime)) throw new Error("MIME_NOT_ALLOWED");
@@ -60,9 +72,14 @@ export class MediaService {
   }) {
     const verified = await this.provider.verifyAsset(req.providerKey);
     if (!verified.exists) throw new Error("PROVIDER_KEY_NOT_FOUND");
-    const db = getDb();
+    // Re-validate policy at confirm time: signUpload checks are advisory
+    // (an attacker can POST here directly), so the allowlist + size limits
+    // must be enforced against the verified-or-declared values.
     const mime = verified.mime ?? req.mime;
     const sizeBytes = verified.sizeBytes ?? req.sizeBytes;
+    if (!allowedMime(mime)) throw new Error("MIME_NOT_ALLOWED");
+    if (sizeBytes > maxForMime(mime)) throw new Error("FILE_TOO_LARGE");
+    const db = this.db;
     const [row] = await db.insert(mediaAssets).values({
       provider: "cloudinary",
       providerKey: req.providerKey,
@@ -84,7 +101,7 @@ export class MediaService {
   }
 
   async listAssets(opts: { folderId?: string; mime?: string; q?: string; page?: number; pageSize?: number } = {}) {
-    const db = getDb();
+    const db = this.db;
     const page = opts.page ?? 1;
     const pageSize = Math.min(opts.pageSize ?? 25, 100);
     const offset = (page - 1) * pageSize;
@@ -98,7 +115,7 @@ export class MediaService {
   }
 
   async getAsset(id: string) {
-    const db = getDb();
+    const db = this.db;
     const [row] = await db.select().from(mediaAssets).where(and(eq(mediaAssets.id, id), sql`${mediaAssets.deletedAt} IS NULL`));
     if (!row) return null;
     return { ...row, transformUrls: this.transformUrls(row.providerKey) };
@@ -116,7 +133,7 @@ export class MediaService {
   }
 
   async updateAsset(id: string, data: { folderId?: string | null; alt?: string; caption?: string }) {
-    const db = getDb();
+    const db = this.db;
     const [row] = await db.update(mediaAssets).set({
       folderId: data.folderId ?? undefined,
       alt: data.alt,
@@ -128,7 +145,7 @@ export class MediaService {
 
   // Folders
   async createFolder(data: { name: string; parentId?: string | null; createdBy?: string }) {
-    const db = getDb();
+    const db = this.db;
     if (!data.name) throw new Error("folder name required");
     const [row] = await db.insert(mediaFolders).values({
       name: data.name,
@@ -143,7 +160,7 @@ export class MediaService {
   }
 
   async renameOrMoveFolder(id: string, data: { name?: string; parentId?: string | null }) {
-    const db = getDb();
+    const db = this.db;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (data.name) updates.name = data.name;
     if (data.parentId !== undefined) updates.parentId = data.parentId;
@@ -159,7 +176,7 @@ export class MediaService {
   }
 
   async deleteFolder(id: string, recursive = false, actorId?: string) {
-    const db = getDb();
+    const db = this.db;
     if (!recursive) {
       const children = await db.select().from(mediaFolders).where(eq(mediaFolders.parentId, id));
       const assets = await db.select().from(mediaAssets).where(eq(mediaAssets.folderId, id));
@@ -174,7 +191,7 @@ export class MediaService {
   }
 
   async listFolders(parentId?: string | null) {
-    const db = getDb();
+    const db = this.db;
     if (parentId === undefined) {
       return db.select().from(mediaFolders);
     }
@@ -185,14 +202,14 @@ export class MediaService {
   }
 
   async deleteAsset(id: string, force = false, actorId?: string) {
-    const db = getDb();
+    const db = this.db;
     const usage = await db.select().from(mediaUsage).where(eq(mediaUsage.assetId, id));
     if (usage.length > 0 && !force) {
       // check if any referenced doc is published
       const refs: { documentId: string; locale: string; fieldPath: string }[] = [];
       for (const u of usage) {
-        const [loc] = await db.select().from((await import("@peggy/db")).documentLocales).where(
-          and(eq((await import("@peggy/db")).documentLocales.documentId, u.documentId), eq((await import("@peggy/db")).documentLocales.locale, u.locale)),
+        const [loc] = await db.select().from(documentLocales).where(
+          and(eq(documentLocales.documentId, u.documentId), eq(documentLocales.locale, u.locale)),
         );
         if (loc && (loc as { publishedVersionId: string | null }).publishedVersionId) {
           refs.push({ documentId: u.documentId, locale: u.locale, fieldPath: u.fieldPath });
@@ -224,15 +241,21 @@ export class MediaService {
   }) {
     const verified = await this.provider.verifyAsset(req.providerKey);
     if (!verified.exists) throw new Error("PROVIDER_KEY_NOT_FOUND");
-    const db = getDb();
-    const cloud = (await import("@peggy/config")).parseConfig().CLOUDINARY_CLOUD_NAME ?? "demo";
+    // Same policy enforcement as confirmUpload (see above): sign checks are
+    // advisory, so re-validate here against verified-or-declared values.
+    const mime = verified.mime ?? req.mime;
+    const sizeBytes = verified.sizeBytes ?? req.sizeBytes;
+    if (!allowedMime(mime)) throw new Error("MIME_NOT_ALLOWED");
+    if (sizeBytes > maxForMime(mime)) throw new Error("FILE_TOO_LARGE");
+    const db = this.db;
+    const cloud = cfg().CLOUDINARY_CLOUD_NAME ?? "demo";
     const [newRow] = await db.insert(mediaAssets).values({
       provider: "cloudinary",
       providerKey: req.providerKey,
       url: `https://res.cloudinary.com/${cloud}/image/upload/${req.providerKey}`,
       secureUrl: `https://res.cloudinary.com/${cloud}/image/upload/${req.providerKey}`,
-      mime: verified.mime ?? req.mime,
-      sizeBytes: verified.sizeBytes ?? req.sizeBytes,
+      mime,
+      sizeBytes,
       folderId: req.folderId,
       alt: req.alt,
       caption: req.caption,

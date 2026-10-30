@@ -3,6 +3,8 @@ import { createApp } from "@peggy/http";
 import type { AuthInstance } from "@peggy/http";
 import { createDbClient } from "@peggy/db";
 import { createAuth } from "@peggy/auth";
+import { CloudinaryProvider } from "@peggy/storage";
+import { initMediaService } from "./routes/media.js";
 import { parseConfig } from "@peggy/config";
 import { rbacRouter } from "./routes/rbac.js";
 import { tokensRouter } from "./routes/tokens.js";
@@ -15,6 +17,9 @@ import { openapiRouter } from "./openapi.js";
 const config = parseConfig();
 const db = createDbClient(config.DATABASE_URL);
 const auth = createAuth();
+
+// Share one db client + provider across invocations in a warm container.
+initMediaService(db.db as never, new CloudinaryProvider());
 
 export const handler = serverless(
   createApp({

@@ -214,3 +214,23 @@
 - [X] T034 Move the 413 Content-Length guard before body parsing (express.json limit is 1mb, so the media route guard never fires for large payloads) per FR-003 / SC-001 (partial)
 - [X] T035 Add audit logging for media delete (force), replace, and folder delete operations per US4/AC2 (missing)
 - [X] T036 Mark implemented tasks T001-T029, T031, T033 complete in tasks.md to reflect the shipped implementation (missing)
+
+## Phase 9: Security hardening (PR #5 review — shipped in 210a58e)
+
+- [X] T037 Close auth bypass: remove `/media/public` exemption in `apps/api/src/routes/media.ts`; make all permission checks fail-closed (`!ctx || ...`)
+- [X] T038 Fail-closed verify: `CloudinaryProvider.verifyAsset` throws `STORAGE_NOT_CONFIGURED` / `PROVIDER_VERIFY_FAILED` (dev-only `CLOUDINARY_ALLOW_UNVERIFIED` escape hatch); re-enforce MIME + size at confirm/replace in `packages/storage/src/media-service.ts`
+- [X] T039 Signed Cloudinary `destroy` (signature + `res.ok` check, surface failures); static `node:crypto` import replacing `new Function` hack in `packages/storage/src/cloudinary-provider.ts`
+- [X] T040 `updateDocument` ledger in a single `db.transaction` (matches `createDocument`) in `packages/auth/src/documents.ts`; constructor-inject shared db + provider into `MediaService` with `initMediaService` called once from `server.ts` / `lambda.ts`; fix `StorageProvider.signUpload` return-type mismatch in `packages/storage/src/provider.ts`
+
+## Phase 10: PR #5 review follow-ups (pre-merge)
+
+- [ ] T041 Verify green: `gh pr checks 5`; local `pnpm install && pnpm nx run-many -t typecheck`; e2e smoke (sign → PUT → confirm → transform URLs → delete) per `quickstart.md`
+- [ ] T042 Decide read auth: `GET /media`, `GET /media/:id`, `GET /media-folders` currently auth-only — confirm open-read intentional or add `media:view` check in `apps/api/src/routes/media.ts`
+- [ ] T043 `media_usage` integrity: add PK/unique constraint + FKs for `documentId`/`versionId` (or cleanup job on document delete); migration + `packages/db/src/schema-media.ts`
+- [ ] T044 Trigger `LIKE` wildcard: `WHERE path LIKE OLD.path || '/%'` → `starts_with(path, OLD.path || '/')` in `0006_media_library.sql`; validate folder names `[^/]{1,64}` in `packages/storage/src/media-service.ts`
+- [ ] T045 `updateAsset`: handle explicit `null` folderId as move-to-root (currently no-op); don't pass `undefined` alt/caption into `.set()` in `packages/storage/src/media-service.ts`
+- [ ] T046 `replaceAsset`: validate `policy` (reject unknown), retire/mark old asset, map duplicate-`providerKey` violation to 409 like confirm (`packages/storage/src/media-service.ts`, `apps/api/src/routes/media.ts`)
+- [ ] T047 Pagination + errors: clamp `page`/`pageSize`, add `ORDER BY createdAt, id` for stable pages; map `String(e)` to coded errors; try/catch on GET/PATCH handlers in `apps/api/src/routes/media.ts`
+- [ ] T048 Deps/config: drop unused `cloudinary` from `packages/storage/package.json` (provider uses raw `fetch`) *or* adopt SDK; add missing `@peggy/storage` to `apps/api/package.json`; add `CLOUDINARY_ALLOW_UNVERIFIED=true` (local-dev-only) to `.env.example`
+- [ ] T049 Docs: flesh out media OpenAPI paths beyond summary stubs or file follow-up; close out T030/T032 as applicable
+- [ ] T050 Merge PR #5 (re-request review if needed), delete branch, verify migration `0006` + `CLOUDINARY_*` vars in deployed env

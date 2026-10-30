@@ -12,9 +12,9 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
-    "@peggy/db": "*",
-    "@peggy/shared": "*",
-    "@peggy/config": "*",
+    "@peggy/db": "workspace:*",
+    "@peggy/shared": "workspace:*",
+    "@peggy/config": "workspace:*",
     "better-auth": "1.7.12",
     "zod": "4.3.6",
     "drizzle-orm": "0.45.4"

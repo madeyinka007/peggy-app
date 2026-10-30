@@ -14,7 +14,7 @@
   "dependencies": {
     "cloudinary": "^1.41.0",
     "drizzle-orm": "0.45.4",
-    "@peggy/db": "*",
-    "@peggy/config": "*"
+    "@peggy/db": "workspace:*",
+    "@peggy/config": "workspace:*"
   }
 }
