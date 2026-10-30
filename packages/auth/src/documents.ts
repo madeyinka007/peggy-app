@@ -2,7 +2,7 @@ import { createDbClient } from "@peggy/db";
 import { parseConfig } from "@peggy/config";
 import type { drizzle } from "drizzle-orm/node-postgres";
 import { eq, and, sql } from "drizzle-orm";
-import { documents, documentVersions, documentLocales, contentTypes, contentFields, locales } from "@peggy/db";
+import { documents, documentVersions, documentLocales, contentTypes, contentFields, locales, mediaAssets, mediaUsage } from "@peggy/db";
 import { randomUUID } from "node:crypto";
 
 function getDb() {
@@ -92,6 +92,29 @@ export async function createDocument(data: {
       locale,
       draftVersionId: version.id,
     });
+
+    // Ledger: record media asset references in media_usage (same transaction)
+    const mediaFields = fields.filter((f) => f.fieldType === "media");
+    for (const mf of mediaFields) {
+      const val = data.data[mf.name];
+      const ids: string[] = [];
+      if (typeof val === "string") ids.push(val);
+      else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
+      else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
+      for (const aid of ids) {
+        // only insert if asset exists (best-effort)
+        const existing = await tx.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
+        if (existing.length > 0) {
+          await tx.insert(mediaUsage).values({
+            assetId: aid,
+            documentId: doc.id,
+            locale,
+            fieldPath: mf.name,
+            versionId: version.id,
+          }).onConflictDoNothing();
+        }
+      }
+    }
 
     return { ...doc, locale, version: version.version, data: version.data, schemaVersion: version.schemaVersion };
   });
@@ -259,6 +282,28 @@ export async function updateDocument(id: string, data: {
     draftVersionId: newVersion.id,
     updatedAt: new Date(),
   }).where(and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc)));
+
+  // Ledger: record media asset references in media_usage (best-effort)
+  const mediaFields2 = fields.filter((f) => f.fieldType === "media");
+  for (const mf of mediaFields2) {
+    const val = data.data[mf.name];
+    const ids: string[] = [];
+    if (typeof val === "string") ids.push(val);
+    else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
+    else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
+    for (const aid of ids) {
+      const existing = await db.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
+      if (existing.length > 0) {
+        await db.insert(mediaUsage).values({
+          assetId: aid,
+          documentId: doc.id,
+          locale: loc,
+          fieldPath: mf.name,
+          versionId: newVersion.id,
+        }).onConflictDoNothing();
+      }
+    }
+  }
 
   return { ...doc, locale: loc, version: newVersion.version, data: newVersion.data, schemaVersion: newVersion.schemaVersion };
 }

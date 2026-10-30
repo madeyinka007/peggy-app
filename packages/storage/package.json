@@ -11,5 +11,10 @@
     "lint": "eslint src",
     "test": "echo \"no tests yet\""
   },
-  "dependencies": {}
+  "dependencies": {
+    "cloudinary": "^1.41.0",
+    "drizzle-orm": "0.45.4",
+    "@peggy/db": "*",
+    "@peggy/config": "*"
+  }
 }

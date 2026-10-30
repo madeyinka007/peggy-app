@@ -34,6 +34,12 @@ const spec = {
     "/api/v1/public/{collectionSlug}": { get: { summary: "Public query" } },
     "/api/v1/public/{collectionSlug}/{slug}": { get: { summary: "Public get by slug" } },
     "/api/v1/locales": { get: { summary: "List locales" }, post: { summary: "Create locale" } },
+    "/api/v1/media": { get: { summary: "List media" }, post: { summary: "Confirm upload" } },
+    "/api/v1/media/sign": { post: { summary: "Sign upload" } },
+    "/api/v1/media/{id}": { get: { summary: "Get media" }, patch: { summary: "Update media" }, delete: { summary: "Delete media" } },
+    "/api/v1/media/{id}/replace": { post: { summary: "Replace media" } },
+    "/api/v1/media-folders": { get: { summary: "List folders" }, post: { summary: "Create folder" } },
+    "/api/v1/media-folders/{id}": { patch: { summary: "Update folder" }, delete: { summary: "Delete folder" } },
   },
 };
 
