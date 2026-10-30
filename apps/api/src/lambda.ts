@@ -9,6 +9,7 @@ import { tokensRouter } from "./routes/tokens.js";
 import { contentTypesRouter } from "./routes/content-types.js";
 import { componentsRouter } from "./routes/components.js";
 import { documentsRouter, publicDocumentsRouter } from "./routes/documents.js";
+import { mediaRouter } from "./routes/media.js";
 import { openapiRouter } from "./openapi.js";
 
 const config = parseConfig();
@@ -30,6 +31,7 @@ export const handler = serverless(
       app.use("/api/v1", contentTypesRouter);
       app.use("/api/v1", componentsRouter);
     app.use("/api/v1", documentsRouter);
+    app.use("/api/v1", mediaRouter);
     app.use("/api/v1", openapiRouter);
     },
   }),
