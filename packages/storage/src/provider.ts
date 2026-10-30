@@ -40,6 +40,6 @@ export interface TransformPreset {
 export interface StorageProvider {
   signUpload(req: SignRequest): Promise<{ url: string; params: SignParams }>;
   verifyAsset(providerKey: string): Promise<{ exists: boolean; width?: number; height?: number; mime?: string; sizeBytes?: number }>;
-  transformUrl(providerKey: string, opts: TransformPreset, cloudName: string): string;
+  transformUrl(providerKey: string, opts: TransformPreset, cloudName?: string): string;
   destroy(providerKey: string): Promise<void>;
 }
