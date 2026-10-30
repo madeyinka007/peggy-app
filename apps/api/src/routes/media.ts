@@ -6,15 +6,9 @@ export const mediaRouter = Router();
 
 const service = new MediaService();
 
-// Content-Length guard for direct large POSTs
-mediaRouter.use((req, res, next) => {
-  const len = Number(req.headers["content-length"] ?? 0);
-  if (req.method === "POST" && (req.path === "/media" || req.path === "/media/") && len > 10 * 1024 * 1024) {
-    return res.status(413).json({ error: { code: "PAYLOAD_TOO_LARGE", message: "Use signed upload flow", signedFlow: "POST /api/v1/media/sign" } });
-  }
-  next();
-});
-
+// NOTE: the 413 Content-Length guard lives app-wide in @peggy/http createApp,
+// BEFORE express.json() — a route-level guard here would never fire because
+// the 1mb body-parser limit rejects large uploads first (T034).
 // auth middleware (same pattern as documents)
 mediaRouter.use(async (req, res, next) => {
   if (req.path.startsWith("/media/public")) return next();
@@ -89,7 +83,7 @@ mediaRouter.delete("/media/:id", async (req, res) => {
   if (ctx && !(await requirePermission(ctx as never, "media", "manage"))) return res.status(403).json({ error: "Forbidden" });
   const force = req.query.force === "true";
   try {
-    await service.deleteAsset(req.params.id, force);
+    await service.deleteAsset(req.params.id, force, ctx?.user?.id);
     res.status(204).end();
   } catch (e) {
     const msg = String(e);
@@ -110,7 +104,7 @@ mediaRouter.post("/media/:id/replace", async (req, res) => {
   const ctx = (req as { auth?: unknown }).auth as { user: { id: string } } | undefined;
   if (ctx && !(await requirePermission(ctx as never, "media", "manage"))) return res.status(403).json({ error: "Forbidden" });
   try {
-    const row = await service.replaceAsset(req.params.id, { ...req.body, uploadedBy: ctx?.user?.id });
+    const row = await service.replaceAsset(req.params.id, { ...req.body, uploadedBy: ctx?.user?.id, actorId: ctx?.user?.id });
     res.status(201).json(row);
   } catch (e) {
     const msg = String(e);
@@ -129,7 +123,11 @@ mediaRouter.post("/media-folders", async (req, res) => {
   const ctx = (req as { auth?: unknown }).auth as { user: { id: string } } | undefined;
   if (ctx && !(await requirePermission(ctx as never, "media", "manage"))) return res.status(403).json({ error: "Forbidden" });
   try {
-    const row = await service.createFolder({ name: req.body?.name ?? "", parentId: req.body?.parentId ?? null, createdBy: ctx?.user?.id });
+    const folderName: string = req.body?.name ?? "";
+    const folderBody: { name: string; parentId?: string | null; createdBy?: string } = { name: folderName };
+    if (req.body?.parentId !== undefined) folderBody.parentId = req.body.parentId;
+    if (ctx?.user?.id) folderBody.createdBy = ctx.user.id;
+    const row = await service.createFolder(folderBody);
     res.status(201).json(row);
   } catch (e) {
     res.status(400).json({ error: String(e) });
@@ -156,7 +154,7 @@ mediaRouter.delete("/media-folders/:id", async (req, res) => {
   if (ctx && !(await requirePermission(ctx as never, "media", "manage"))) return res.status(403).json({ error: "Forbidden" });
   const recursive = req.query.recursive === "true";
   try {
-    await service.deleteFolder(req.params.id, recursive);
+    await service.deleteFolder(req.params.id, recursive, ctx?.user?.id);
     res.status(204).end();
   } catch (e) {
     const msg = String(e);

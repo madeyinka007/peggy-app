@@ -4,6 +4,9 @@ import { eq, and, sql } from "drizzle-orm";
 import { mediaFolders, mediaAssets, mediaUsage, contentTypes, contentFields } from "@peggy/db";
 import { CloudinaryProvider } from "./cloudinary-provider.js";
 import { parseConfig } from "@peggy/config";
+import { createLogger } from "@peggy/shared";
+
+const log = createLogger();
 
 function getDb() {
   const config = parseConfig();
@@ -155,7 +158,7 @@ export class MediaService {
     }
   }
 
-  async deleteFolder(id: string, recursive = false) {
+  async deleteFolder(id: string, recursive = false, actorId?: string) {
     const db = getDb();
     if (!recursive) {
       const children = await db.select().from(mediaFolders).where(eq(mediaFolders.parentId, id));
@@ -164,7 +167,9 @@ export class MediaService {
         throw new Error(`FOLDER_NOT_EMPTY:${children.length + assets.length}`);
       }
     }
+    const [doomed] = await db.select().from(mediaFolders).where(eq(mediaFolders.id, id));
     await db.delete(mediaFolders).where(eq(mediaFolders.id, id));
+    log.info("media.folder.delete", { folderId: id, path: doomed?.path ?? null, recursive, actorId: actorId ?? null });
     return true;
   }
 
@@ -179,7 +184,7 @@ export class MediaService {
     return db.select().from(mediaFolders).where(eq(mediaFolders.parentId, parentId));
   }
 
-  async deleteAsset(id: string, force = false) {
+  async deleteAsset(id: string, force = false, actorId?: string) {
     const db = getDb();
     const usage = await db.select().from(mediaUsage).where(eq(mediaUsage.assetId, id));
     if (usage.length > 0 && !force) {
@@ -202,6 +207,7 @@ export class MediaService {
     if (row) {
       try { await this.provider.destroy(row.providerKey); } catch { /* ignore */ }
     }
+    log.info("media.asset.delete", { assetId: id, force, actorId: actorId ?? null, providerKey: row?.providerKey ?? null });
     return true;
   }
 
@@ -214,6 +220,7 @@ export class MediaService {
     alt?: string;
     caption?: string;
     uploadedBy?: string;
+    actorId?: string;
   }) {
     const verified = await this.provider.verifyAsset(req.providerKey);
     if (!verified.exists) throw new Error("PROVIDER_KEY_NOT_FOUND");
@@ -235,6 +242,7 @@ export class MediaService {
     if (req.policy === "update-references") {
       await db.update(mediaUsage).set({ assetId: newRow.id }).where(eq(mediaUsage.assetId, oldId));
     }
+    log.info("media.asset.replace", { oldAssetId: oldId, newAssetId: newRow.id, policy: req.policy, actorId: req.actorId ?? req.uploadedBy ?? null, providerKey: newRow.providerKey });
     return newRow;
   }
 }

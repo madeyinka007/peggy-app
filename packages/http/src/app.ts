@@ -76,6 +76,30 @@ export function createApp(opts: CreateAppOptions = {}): Express {
     app.all("/api/auth/*", toNodeHandler(opts.auth as Parameters<typeof toNodeHandler>[0]));
   }
 
+  // 413 guard for direct-to-API uploads — MUST be before express.json()
+  // (express.json limit is 1mb, which would reject large uploads with a generic
+  // error before the media route's signedFlow guidance ever fires). Header-only,
+  // no bytes buffered. Per FR-003 / SC-001.
+  app.use((req, res, next) => {
+    if (
+      req.method === "POST" &&
+      (req.path === "/api/v1/media" || req.path === "/api/v1/media/")
+    ) {
+      const len = Number(req.headers["content-length"] ?? 0);
+      if (len > 10 * 1024 * 1024) {
+        res.status(413).json({
+          error: {
+            code: "PAYLOAD_TOO_LARGE",
+            message: "Use signed upload flow",
+            signedFlow: "POST /api/v1/media/sign",
+          },
+        });
+        return;
+      }
+    }
+    next();
+  });
+
   app.use(express.json({ limit: "1mb" }));
 
   // Feature routes (registered after body parsing)

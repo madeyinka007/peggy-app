@@ -26,8 +26,8 @@
 
 **Purpose**: Verify prior slice and prepare shared dependencies for media
 
-- [ ] T001 Verify Slice 3/4 complete: `tsc --noEmit` passes for all packages, `/health` + `/ready` return 200
-- [ ] T002 [P] Add `cloudinary` dependency to `packages/storage/package.json` (provider adapter only) and env wiring in `packages/config/src/env.ts` if not already present
+- [X] T001 Verify Slice 3/4 complete: `tsc --noEmit` passes for all packages, `/health` + `/ready` return 200
+- [X] T002 [P] Add `cloudinary` dependency to `packages/storage/package.json` (provider adapter only) and env wiring in `packages/config/src/env.ts` if not already present
 
 **Checkpoint**: Shared infrastructure ready
 
@@ -39,14 +39,14 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Create media schema: `media_folders`, `media_assets`, `media_usage` tables in `packages/db/src/schema-media.ts` (per `data-model.md`)
-- [ ] T004 Update schema barrel export: `packages/db/src/schema.ts` re-exporting `schema-media`
-- [ ] T005 Create Drizzle migration: `npx drizzle-kit generate` → `packages/db/drizzle/0006_media_library.sql`
-- [ ] T006 Create folder-path trigger: materialized `path` maintenance + cycle rejection + depth limit 8 in the migration (per `research.md` Decision 4)
-- [ ] T007 Apply migration to Postgres: `npx drizzle-kit migrate` (seed `locales` default if needed for later document/media_usage linkage)
-- [ ] T008 Create `StorageProvider` port interface in `packages/storage/src/provider.ts` (sign, confirm/verify, transformUrl, destroy)
-- [ ] T009 Create `CloudinaryProvider` adapter in `packages/storage/src/cloudinary-provider.ts` — ONLY file allowed to import `cloudinary` (per Constitution P-03)
-- [ ] T010 Export public API from `packages/storage/src/index.ts` (provider port + CloudinaryProvider + MediaService)
+- [X] T003 Create media schema: `media_folders`, `media_assets`, `media_usage` tables in `packages/db/src/schema-media.ts` (per `data-model.md`)
+- [X] T004 Update schema barrel export: `packages/db/src/schema.ts` re-exporting `schema-media`
+- [X] T005 Create Drizzle migration: `npx drizzle-kit generate` → `packages/db/drizzle/0006_media_library.sql`
+- [X] T006 Create folder-path trigger: materialized `path` maintenance + cycle rejection + depth limit 8 in the migration (per `research.md` Decision 4)
+- [X] T007 Apply migration to Postgres: `npx drizzle-kit migrate` (seed `locales` default if needed for later document/media_usage linkage)
+- [X] T008 Create `StorageProvider` port interface in `packages/storage/src/provider.ts` (sign, confirm/verify, transformUrl, destroy)
+- [X] T009 Create `CloudinaryProvider` adapter in `packages/storage/src/cloudinary-provider.ts` — ONLY file allowed to import `cloudinary` (per Constitution P-03)
+- [X] T010 Export public API from `packages/storage/src/index.ts` (provider port + CloudinaryProvider + MediaService)
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
@@ -60,13 +60,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement `MediaService.signUpload` in `packages/storage/src/media-service.ts`: validate MIME allowlist + size limits (422 `MIME_NOT_ALLOWED` / `FILE_TOO_LARGE`), delegate signing to `StorageProvider.signUpload`
-- [ ] T012 [US1] Implement `MediaService.confirmUpload` in `packages/storage/src/media-service.ts`: HEAD/lookup cross-check against provider, reconcile metadata, insert `media_assets` row (422 `PROVIDER_KEY_NOT_FOUND` on miss)
-- [ ] T013 [US1] Add `Content-Length` guard for large payloads (413 `PAYLOAD_TOO_LARGE` with `{ signedFlow }`) at the media route layer in `apps/api/src/routes/media.ts`
-- [ ] T014 [US1] Create media route handlers (`POST /api/v1/media/sign`, `POST /api/v1/media`, `GET /api/v1/media`, `GET /api/v1/media/:id`) in `apps/api/src/routes/media.ts` with RBAC (`media.upload` / `media.read`)
-- [ ] T015 [US1] Wire media routes into `apps/api/src/server.ts` and `apps/api/src/lambda.ts`
-- [ ] T016 [US1] Append media paths to `apps/api/src/openapi.ts`
-- [ ] T017 [US1] Verify: sign → 200 with params; confirm with valid providerKey → 201; disallowed MIME → 422; oversize → 422; 20MB direct POST → 413
+- [X] T011 [US1] Implement `MediaService.signUpload` in `packages/storage/src/media-service.ts`: validate MIME allowlist + size limits (422 `MIME_NOT_ALLOWED` / `FILE_TOO_LARGE`), delegate signing to `StorageProvider.signUpload`
+- [X] T012 [US1] Implement `MediaService.confirmUpload` in `packages/storage/src/media-service.ts`: HEAD/lookup cross-check against provider, reconcile metadata, insert `media_assets` row (422 `PROVIDER_KEY_NOT_FOUND` on miss)
+- [X] T013 [US1] Add `Content-Length` guard for large payloads (413 `PAYLOAD_TOO_LARGE` with `{ signedFlow }`) at the media route layer in `apps/api/src/routes/media.ts`
+- [X] T014 [US1] Create media route handlers (`POST /api/v1/media/sign`, `POST /api/v1/media`, `GET /api/v1/media`, `GET /api/v1/media/:id`) in `apps/api/src/routes/media.ts` with RBAC (`media.upload` / `media.read`)
+- [X] T015 [US1] Wire media routes into `apps/api/src/server.ts` and `apps/api/src/lambda.ts`
+- [X] T016 [US1] Append media paths to `apps/api/src/openapi.ts`
+- [X] T017 [US1] Verify: sign → 200 with params; confirm with valid providerKey → 201; disallowed MIME → 422; oversize → 422; 20MB direct POST → 413
 
 **Checkpoint**: User Story 1 fully functional and testable independently
 
@@ -80,10 +80,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Implement folder CRUD in `packages/storage/src/media-service.ts` (create, rename, move, delete) with service-level depth/cycle validation as defense-in-depth alongside the DB trigger
-- [ ] T019 [US2] Create folder route handlers (`GET /api/v1/media-folders`, `POST /api/v1/media-folders`, `PATCH /api/v1/media-folders/:id`, `DELETE /api/v1/media-folders/:id`) in `apps/api/src/routes/media.ts` (extend `T014`'s router)
-- [ ] T020 [US2] Add RBAC (`media.manage`) to folder routes and asset move (`PATCH /api/v1/media/:id` with `folderId`)
-- [ ] T021 [US2] Verify: nested create → correct path; cycle move → 422; deep nesting → 422; delete non-empty without recursive → 409; recursive + permission → 204
+- [X] T018 [US2] Implement folder CRUD in `packages/storage/src/media-service.ts` (create, rename, move, delete) with service-level depth/cycle validation as defense-in-depth alongside the DB trigger
+- [X] T019 [US2] Create folder route handlers (`GET /api/v1/media-folders`, `POST /api/v1/media-folders`, `PATCH /api/v1/media-folders/:id`, `DELETE /api/v1/media-folders/:id`) in `apps/api/src/routes/media.ts` (extend `T014`'s router)
+- [X] T020 [US2] Add RBAC (`media.manage`) to folder routes and asset move (`PATCH /api/v1/media/:id` with `folderId`)
+- [X] T021 [US2] Verify: nested create → correct path; cycle move → 422; deep nesting → 422; delete non-empty without recursive → 409; recursive + permission → 204
 
 **Checkpoint**: User Stories 1 AND 2 both work independently
 
@@ -97,9 +97,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T022 [US3] Implement `transformUrl` in `packages/storage/src/cloudinary-provider.ts` (preset → transform string → `https://res.cloudinary.com/{cloud}/image/upload/{transforms}/{publicId}`; `f_auto,q_auto` defaults)
-- [ ] T023 [US3] Expose transform URLs on asset read: extend `GET /api/v1/media/:id` in `apps/api/src/routes/media.ts` to include `transformUrls` from the provider
-- [ ] T024 [US3] Verify: presets return valid URLs with no DB write; custom `{ w, h, format }` honored; `f_auto,q_auto` present when not overridden
+- [X] T022 [US3] Implement `transformUrl` in `packages/storage/src/cloudinary-provider.ts` (preset → transform string → `https://res.cloudinary.com/{cloud}/image/upload/{transforms}/{publicId}`; `f_auto,q_auto` defaults)
+- [X] T023 [US3] Expose transform URLs on asset read: extend `GET /api/v1/media/:id` in `apps/api/src/routes/media.ts` to include `transformUrls` from the provider
+- [X] T024 [US3] Verify: presets return valid URLs with no DB write; custom `{ w, h, format }` honored; `f_auto,q_auto` present when not overridden
 
 **Checkpoint**: User Stories 1, 2, AND 3 all work independently
 
@@ -113,11 +113,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Implement delete guard in `packages/storage/src/media-service.ts`: O(1) `media_usage` lookup where target document has published content; return 409 payload or soft-delete + queue provider destroy
-- [ ] T026 [US4] Implement replace in `packages/storage/src/media-service.ts` (`POST /api/v1/media/:id/replace`): confirm new providerKey, create new `media_assets` row, handle `update-references` vs `keep-both` ledger policy
-- [ ] T027 [US4] Wire ledger writes into document version creation: on `documents` version insert in `packages/auth/src/documents.ts` (or `packages/storage` via shared helper), scan `data` for media field references per content type's `media` fields and upsert `media_usage` rows in the same transaction
-- [ ] T028 [US4] Create delete/replace route handlers (`DELETE /api/v1/media/:id`, `POST /api/v1/media/:id/replace`) in `apps/api/src/routes/media.ts` with RBAC (`media.manage`) and audit
-- [ ] T029 [US4] Verify: referenced → delete without force → 409 with `references[]`; force → 204; replace `update-references` → ledger moved; `keep-both` → ledger untouched
+- [X] T025 [US4] Implement delete guard in `packages/storage/src/media-service.ts`: O(1) `media_usage` lookup where target document has published content; return 409 payload or soft-delete + queue provider destroy
+- [X] T026 [US4] Implement replace in `packages/storage/src/media-service.ts` (`POST /api/v1/media/:id/replace`): confirm new providerKey, create new `media_assets` row, handle `update-references` vs `keep-both` ledger policy
+- [X] T027 [US4] Wire ledger writes into document version creation: on `documents` version insert in `packages/auth/src/documents.ts` (or `packages/storage` via shared helper), scan `data` for media field references per content type's `media` fields and upsert `media_usage` rows in the same transaction
+- [X] T028 [US4] Create delete/replace route handlers (`DELETE /api/v1/media/:id`, `POST /api/v1/media/:id/replace`) in `apps/api/src/routes/media.ts` with RBAC (`media.manage`) and audit
+- [X] T029 [US4] Verify: referenced → delete without force → 409 with `references[]`; force → 204; replace `update-references` → ledger moved; `keep-both` → ledger untouched
 
 **Checkpoint**: User Stories 1, 2, 3, AND 4 all work independently
 
@@ -128,9 +128,9 @@
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] T030 Update `docs/checklist.md` — mark Media Library phase complete
-- [ ] T031 Enforce module boundaries: verify no `cloudinary` import outside `packages/storage/src/cloudinary-provider.ts` (arch test / `nx enforce-module-boundaries` — SC-005)
+- [X] T031 Enforce module boundaries: verify no `cloudinary` import outside `packages/storage/src/cloudinary-provider.ts` (arch test / `nx enforce-module-boundaries` — SC-005)
 - [ ] T032 Run `quickstart.md` validation (folder → sign → direct PUT → confirm → transform URLs → delete guard) and fix any gaps
-- [ ] T033 Handle edge cases: SVG blocked default, oversize in upload flow, `PROVIDER_KEY_NOT_FOUND` on confirm, folder `path` cascade on move
+- [X] T033 Handle edge cases: SVG blocked default, oversize in upload flow, `PROVIDER_KEY_NOT_FOUND` on confirm, folder `path` cascade on move
 
 ---
 
@@ -211,6 +211,6 @@
 
 ## Phase 8: Convergence
 
-- [ ] T034 Move the 413 Content-Length guard before body parsing (express.json limit is 1mb, so the media route guard never fires for large payloads) per FR-003 / SC-001 (partial)
-- [ ] T035 Add audit logging for media delete (force), replace, and folder delete operations per US4/AC2 (missing)
-- [ ] T036 Mark implemented tasks T001-T029, T031, T033 complete in tasks.md to reflect the shipped implementation (missing)
+- [X] T034 Move the 413 Content-Length guard before body parsing (express.json limit is 1mb, so the media route guard never fires for large payloads) per FR-003 / SC-001 (partial)
+- [X] T035 Add audit logging for media delete (force), replace, and folder delete operations per US4/AC2 (missing)
+- [X] T036 Mark implemented tasks T001-T029, T031, T033 complete in tasks.md to reflect the shipped implementation (missing)
