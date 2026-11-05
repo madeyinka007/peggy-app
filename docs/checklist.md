@@ -49,3 +49,19 @@
 - [x] /health returns 200 { status: "ok" }
 - [x] /ready returns 200 { status: "ready", db: true }
 - [x] All packages typecheck with zero errors
+
+## Slice 5 — Media Library ✅ COMPLETE
+- [x] Spec: `specs/005-media-library/spec.md`
+- [x] Plan: `specs/005-media-library/plan.md`
+- [x] Research: `specs/005-media-library/research.md`
+- [x] Data model: `specs/005-media-library/data-model.md`
+- [x] Contracts: `specs/005-media-library/contracts/media-endpoints.md`
+- [x] Quickstart: `specs/005-media-library/quickstart.md`
+- [x] Migration `0006` (+ `0007` integrity): media_folders/assets/usage, path trigger, PK/FKs
+- [x] `StorageProvider` port + fetch-based `CloudinaryProvider` (per-MIME resource_type; no SDK)
+- [x] `MediaService`: sign/confirm/folders/delete-guard/replace/transformUrls + audit logs
+- [x] Routes in `apps/api` (RBAC-gated mutations, open reads, coded errors) + 413 guard in `@peggy/http`
+- [x] Ledger reconciliation in `@peggy/auth` (delete-then-insert on create/update/restore, cleanup on delete)
+- [x] P-03 boundary lint (`no-restricted-imports` in root eslint config)
+- [x] Expanded media OpenAPI paths beyond summary stubs
+- [x] Secret hygiene verified: `.env.example` holds placeholders only; no real values in history

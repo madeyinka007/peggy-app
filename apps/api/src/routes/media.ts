@@ -54,37 +54,53 @@ mediaRouter.post("/media", async (req, res) => {
   } catch (e) {
     const msg = String(e);
     if (msg.includes("PROVIDER_KEY_NOT_FOUND")) return res.status(422).json({ error: { code: "PROVIDER_KEY_NOT_FOUND", message: msg } });
-    if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: msg });
-    res.status(400).json({ error: msg });
+    // MIME/size are re-enforced at confirm time (policy gate, not client bug
+    // passthrough) — 422 with details, matching the sign route (T052/FR-004).
+    if (msg.includes("MIME_NOT_ALLOWED")) return res.status(422).json({ error: { code: "MIME_NOT_ALLOWED", message: msg } });
+    if (msg.includes("FILE_TOO_LARGE")) return res.status(422).json({ error: { code: "FILE_TOO_LARGE", message: msg } });
+    if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
 });
 
 // list
 mediaRouter.get("/media", async (req, res) => {
-  const result = await service.listAssets({
-    folderId: req.query.folderId as string,
-    mime: req.query.mime as string,
-    q: req.query.q as string,
-    page: req.query.page ? Number(req.query.page) : 1,
-    pageSize: req.query.pageSize ? Number(req.query.pageSize) : 25,
-  });
-  res.json(result);
+  try {
+    const result = await service.listAssets({
+      folderId: req.query.folderId as string,
+      mime: req.query.mime as string,
+      q: req.query.q as string,
+      page: req.query.page ? Number(req.query.page) : 1,
+      pageSize: req.query.pageSize ? Number(req.query.pageSize) : 25,
+    });
+    res.json(result);
+  } catch (e) {
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: String(e) } });
+  }
 });
 
 // get
 mediaRouter.get("/media/:id", async (req, res) => {
-  const asset = await service.getAsset(req.params.id);
-  if (!asset) return res.status(404).json({ error: "Not found" });
-  res.json(asset);
+  try {
+    const asset = await service.getAsset(req.params.id);
+    if (!asset) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Not found" } });
+    res.json(asset);
+  } catch (e) {
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: String(e) } });
+  }
 });
 
 // update (folder move / alt / caption)
 mediaRouter.patch("/media/:id", async (req, res) => {
   const ctx = (req as { auth?: unknown }).auth as { user: { id: string } } | undefined;
   if (!ctx || !(await requirePermission(ctx as never, "media", "manage"))) return res.status(403).json({ error: "Forbidden" });
-  const row = await service.updateAsset(req.params.id, req.body ?? {});
-  if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  try {
+    const row = await service.updateAsset(req.params.id, req.body ?? {});
+    if (!row) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Not found" } });
+    res.json(row);
+  } catch (e) {
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: String(e) } });
+  }
 });
 
 // delete
@@ -105,7 +121,8 @@ mediaRouter.delete("/media/:id", async (req, res) => {
         return res.status(409).json({ error: { code: "MEDIA_REFERENCED", message: msg } });
       }
     }
-    res.status(400).json({ error: msg });
+    if (msg.includes("NOT_FOUND")) return res.status(404).json({ error: { code: "NOT_FOUND", message: msg } });
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
 });
 
@@ -119,14 +136,22 @@ mediaRouter.post("/media/:id/replace", async (req, res) => {
   } catch (e) {
     const msg = String(e);
     if (msg.includes("PROVIDER_KEY_NOT_FOUND")) return res.status(422).json({ error: { code: "PROVIDER_KEY_NOT_FOUND", message: msg } });
-    res.status(400).json({ error: msg });
+    if (msg.includes("MIME_NOT_ALLOWED")) return res.status(422).json({ error: { code: "MIME_NOT_ALLOWED", message: msg } });
+    if (msg.includes("FILE_TOO_LARGE")) return res.status(422).json({ error: { code: "FILE_TOO_LARGE", message: msg } });
+    if (msg.includes("UNKNOWN_POLICY")) return res.status(422).json({ error: { code: "UNKNOWN_POLICY", message: msg } });
+    if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
 });
 
 // folders
 mediaRouter.get("/media-folders", async (req, res) => {
-  const rows = await service.listFolders(req.query.parentId === undefined ? undefined : (req.query.parentId === "null" ? null : (req.query.parentId as string)));
-  res.json({ data: rows });
+  try {
+    const rows = await service.listFolders(req.query.parentId === undefined ? undefined : (req.query.parentId === "null" ? null : (req.query.parentId as string)));
+    res.json({ data: rows });
+  } catch (e) {
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: String(e) } });
+  }
 });
 
 mediaRouter.post("/media-folders", async (req, res) => {
@@ -149,13 +174,13 @@ mediaRouter.patch("/media-folders/:id", async (req, res) => {
   if (!ctx || !(await requirePermission(ctx as never, "media", "manage"))) return res.status(403).json({ error: "Forbidden" });
   try {
     const row = await service.renameOrMoveFolder(req.params.id, { name: req.body?.name, parentId: req.body?.parentId });
-    if (!row) return res.status(404).json({ error: "Not found" });
+    if (!row) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Not found" } });
     res.json(row);
   } catch (e) {
     const msg = String(e);
     if (msg.includes("FOLDER_CYCLE")) return res.status(422).json({ error: { code: "FOLDER_CYCLE", message: msg } });
     if (msg.includes("FOLDER_DEPTH_EXCEEDED")) return res.status(422).json({ error: { code: "FOLDER_DEPTH_EXCEEDED", message: msg } });
-    res.status(400).json({ error: msg });
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
 });
 
@@ -169,6 +194,7 @@ mediaRouter.delete("/media-folders/:id", async (req, res) => {
   } catch (e) {
     const msg = String(e);
     if (msg.startsWith("FOLDER_NOT_EMPTY:")) return res.status(409).json({ error: { code: "FOLDER_NOT_EMPTY", message: msg } });
-    res.status(400).json({ error: msg });
+    if (msg.includes("NOT_FOUND")) return res.status(404).json({ error: { code: "NOT_FOUND", message: msg } });
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
 });

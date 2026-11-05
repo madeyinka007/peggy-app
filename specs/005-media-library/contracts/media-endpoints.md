@@ -2,6 +2,12 @@
 
 Base: `/api/v1`. Error envelope: `{ error: { code, message, details? } }`.
 
+> **Read auth (T042 decision)**: `GET /media`, `GET /media/:id`, and
+> `GET /media-folders` are intentionally open reads — no permission check.
+> Like public content reads, asset metadata and transform URLs are
+> non-sensitive; bytes always come from Cloudinary directly. All mutations
+> require `media.upload` / `media.manage` as noted per route.
+
 ## POST /api/v1/media/sign — `media.upload`
 
 Request: `{ filename, mime, sizeBytes, folderId? }`
@@ -18,11 +24,11 @@ Request: `{ providerKey, mime, sizeBytes, folderId?, alt?, caption?, width?, hei
 - 422 `PROVIDER_KEY_NOT_FOUND` when the provider has no such key.
 - 413 `PAYLOAD_TOO_LARGE` when `Content-Length` exceeds the service constant, with `{ signedFlow: "POST /api/v1/media/sign" }`.
 
-## GET /api/v1/media — `media.read` (or public scope)
+## GET /api/v1/media — open read
 
 Query: `?folderId=&mime=&q=&page=&pageSize=` — paginated asset list (soft-deleted excluded).
 
-## GET /api/v1/media/:id — `media.read`
+## GET /api/v1/media/:id — open read
 
 - 200 asset row + `transformUrls: { thumb, card, hero, original }` (read-time, no DB write).
 - 404 when missing or soft-deleted (without `includeDeleted`).
@@ -40,9 +46,9 @@ Updatable: `{ folderId, alt, caption }`. Move across folders allowed.
 
 Request: `{ providerKey, policy: "update-references" | "keep-both", ...meta }` — creates a new asset row; `update-references` moves `media_usage` rows.
 
-## Folders — `media.manage`
+## Folders — `media.manage` (mutations only; reads open)
 
-- `GET /api/v1/media-folders` — tree (recursive CTE) or flat with `?parentId=`.
+- `GET /api/v1/media-folders` — open read: tree (recursive CTE) or flat with `?parentId=`.
 - `POST /api/v1/media-folders` — `{ name, parentId? }` → 201 with materialized `path`.
 - `PATCH /api/v1/media-folders/:id` — rename/move; 422 `FOLDER_CYCLE` / `FOLDER_DEPTH_EXCEEDED`.
 - `DELETE /api/v1/media-folders/:id` — 409 with asset count unless `?recursive=true`.

@@ -1,7 +1,8 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, index, unique, check } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, boolean, integer, jsonb, index, unique, check, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { user } from "./schema-auth.js";
+import { documents, documentVersions } from "./schema-documents.js";
 
 export const mediaFolders = pgTable(
   "media_folders",
@@ -60,12 +61,13 @@ export const mediaUsage = pgTable(
   "media_usage",
   {
     assetId: uuid("asset_id").notNull().references(() => mediaAssets.id, { onDelete: "cascade" }),
-    documentId: uuid("document_id").notNull(),
+    documentId: uuid("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
     locale: text("locale").notNull(),
     fieldPath: text("field_path").notNull(),
-    versionId: uuid("version_id"),
+    versionId: uuid("version_id").references(() => documentVersions.id, { onDelete: "cascade" }),
   },
   (table) => [
+    primaryKey({ columns: [table.assetId, table.documentId, table.locale, table.fieldPath], name: "media_usage_pkey" }),
     index("media_usage_document_locale_idx").on(table.documentId, table.locale),
     index("media_usage_asset_idx").on(table.assetId),
   ],

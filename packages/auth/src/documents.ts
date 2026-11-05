@@ -93,33 +93,60 @@ export async function createDocument(data: {
       draftVersionId: version.id,
     });
 
-    // Ledger: record media asset references in media_usage (same transaction)
-    const mediaFields = fields.filter((f) => f.fieldType === "media");
-    for (const mf of mediaFields) {
-      const val = data.data[mf.name];
-      const ids: string[] = [];
-      if (typeof val === "string") ids.push(val);
-      else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
-      else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
-      for (const aid of ids) {
-        // only insert if asset exists (best-effort)
-        const existing = await tx.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
-        if (existing.length > 0) {
-          await tx.insert(mediaUsage).values({
-            assetId: aid,
-            documentId: doc.id,
-            locale,
-            fieldPath: mf.name,
-            versionId: version.id,
-          }).onConflictDoNothing();
-        }
-      }
-    }
+    // Ledger: reconcile media asset references in media_usage (same
+    // transaction). Delete stale rows first so removed refs stop causing
+    // false 409s, then insert refs from the new version (T054).
+    await tx.delete(mediaUsage).where(
+      and(eq(mediaUsage.documentId, doc.id), eq(mediaUsage.locale, locale)),
+    );
+    await writeMediaUsageRefs(tx, {
+      documentId: doc.id,
+      locale,
+      versionId: version.id,
+      data: data.data,
+      fields,
+    });
 
     return { ...doc, locale, version: version.version, data: version.data, schemaVersion: version.schemaVersion };
   });
 }
 
+
+/**
+ * Media-usage ledger writer (Slice 5, T054/T043). Scans version `data` for
+ * media-type field references and inserts `media_usage` rows.
+ *
+ * Intended as delete-then-insert inside the caller's transaction: the caller
+ * deletes stale rows for (documentId, locale) first, then calls this to
+ * insert current refs. `insert` + `onConflictDoNothing` makes the insert
+ * idempotent (matches the media_usage PK added in 0007).
+ */
+export async function writeMediaUsageRefs(
+  tx: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
+  opts: { documentId: string; locale: string; versionId: string; data: Record<string, unknown>; fields: { name: string; fieldType: string }[] },
+): Promise<void> {
+  const mediaFields = opts.fields.filter((f) => f.fieldType === "media");
+  for (const mf of mediaFields) {
+    const val = opts.data[mf.name];
+    const ids: string[] = [];
+    if (typeof val === "string") ids.push(val);
+    else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
+    else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
+    for (const aid of ids) {
+      // Only record refs to existing assets (best-effort).
+      const existing = await tx.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
+      if (existing.length > 0) {
+        await tx.insert(mediaUsage).values({
+          assetId: aid,
+          documentId: opts.documentId,
+          locale: opts.locale,
+          fieldPath: mf.name,
+          versionId: opts.versionId,
+        }).onConflictDoNothing();
+      }
+    }
+  }
+}
 
 function validateFieldValue(fieldType: string, val: unknown): boolean {
   switch (fieldType) {
@@ -287,27 +314,19 @@ export async function updateDocument(id: string, data: {
       updatedAt: new Date(),
     }).where(and(eq(documentLocales.documentId, doc.id), eq(documentLocales.locale, loc)));
 
-    // Ledger: record media asset references in media_usage (same transaction)
-    const mediaFields2 = fields.filter((f) => f.fieldType === "media");
-    for (const mf of mediaFields2) {
-      const val = data.data[mf.name];
-      const ids: string[] = [];
-      if (typeof val === "string") ids.push(val);
-      else if (Array.isArray(val)) val.forEach((v) => { if (typeof v === "string") ids.push(v); else if (v && typeof v === "object" && "id" in (v as object)) ids.push(String((v as { id: unknown }).id)); });
-      else if (val && typeof val === "object" && "id" in (val as object)) ids.push(String((val as { id: unknown }).id));
-      for (const aid of ids) {
-        const existing = await tx.select().from(mediaAssets).where(eq(mediaAssets.id, aid));
-        if (existing.length > 0) {
-          await tx.insert(mediaUsage).values({
-            assetId: aid,
-            documentId: doc.id,
-            locale: loc,
-            fieldPath: mf.name,
-            versionId: newVersion.id,
-          }).onConflictDoNothing();
-        }
-      }
-    }
+    // Ledger: delete-then-insert reconciliation in the same transaction
+    // (T054) — replaces the stale append-only insert so removed refs stop
+    // causing false 409s.
+    await tx.delete(mediaUsage).where(
+      and(eq(mediaUsage.documentId, doc.id), eq(mediaUsage.locale, loc)),
+    );
+    await writeMediaUsageRefs(tx, {
+      documentId: doc.id,
+      locale: loc,
+      versionId: newVersion.id,
+      data: data.data,
+      fields,
+    });
 
     return { ...doc, locale: loc, version: newVersion.version, data: newVersion.data, schemaVersion: newVersion.schemaVersion };
   });
@@ -315,7 +334,13 @@ export async function updateDocument(id: string, data: {
 
 export async function deleteDocument(id: string) {
   const db = getDb();
-  await db.update(documents).set({ deletedAt: new Date() }).where(eq(documents.id, id));
+  await db.transaction(async (tx) => {
+    // Remove this document's ledger rows first (they reference versions that
+    // cascade away anyway, but explicit cleanup keeps the guard exact and
+    // does not depend on migration 0007 FKs being applied yet — T043/T054).
+    await tx.delete(mediaUsage).where(eq(mediaUsage.documentId, id));
+    await tx.update(documents).set({ deletedAt: new Date() }).where(eq(documents.id, id));
+  });
   return true;
 }
 
@@ -337,27 +362,49 @@ export async function restoreVersion(id: string, version: number, locale?: strin
   );
   if (!oldVersion) throw new Error("Version not found");
 
+  // Fetch fields for ledger extraction + current max version up front so
+  // the transaction below does reads-then-writes only.
+  const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+  if (!doc) throw new Error("Document not found");
+  const [ct] = await db.select().from(contentTypes).where(eq(contentTypes.id, doc.contentTypeId));
+  if (!ct) throw new Error("Content type not found");
+  const fields = await db.select().from(contentFields).where(eq(contentFields.contentTypeId, doc.contentTypeId));
   const versions = await db.select().from(documentVersions).where(
     and(eq(documentVersions.documentId, id), eq(documentVersions.locale, loc))
   );
   const maxVersion = versions.reduce((max, v) => Math.max(max, v.version), 0);
 
-  const [newVersion] = await db.insert(documentVersions).values({
-    documentId: id,
-    locale: loc,
-    version: maxVersion + 1,
-    status: "draft",
-    data: oldVersion.data,
-    schemaVersion: oldVersion.schemaVersion,
-    slug: oldVersion.slug,
-    createdBy: createdBy ?? null,
-  }).returning();
-  if (!newVersion) throw new Error("Failed to create version");
+  return await db.transaction(async (tx) => {
+    const [newVersion] = await tx.insert(documentVersions).values({
+      documentId: id,
+      locale: loc,
+      version: maxVersion + 1,
+      status: "draft",
+      data: oldVersion.data,
+      schemaVersion: oldVersion.schemaVersion,
+      slug: oldVersion.slug,
+      createdBy: createdBy ?? null,
+    }).returning();
+    if (!newVersion) throw new Error("Failed to create version");
 
-  await db.update(documentLocales).set({
-    draftVersionId: newVersion.id,
-    updatedAt: new Date(),
-  }).where(and(eq(documentLocales.documentId, id), eq(documentLocales.locale, loc)));
+    await tx.update(documentLocales).set({
+      draftVersionId: newVersion.id,
+      updatedAt: new Date(),
+    }).where(and(eq(documentLocales.documentId, id), eq(documentLocales.locale, loc)));
 
-  return { version: newVersion.version, data: newVersion.data };
+    // Ledger: record refs from the restored data (T054) so the delete guard
+    // sees the live revision's references.
+    await tx.delete(mediaUsage).where(
+      and(eq(mediaUsage.documentId, id), eq(mediaUsage.locale, loc)),
+    );
+    await writeMediaUsageRefs(tx, {
+      documentId: id,
+      locale: loc,
+      versionId: newVersion.id,
+      data: oldVersion.data as Record<string, unknown>,
+      fields,
+    });
+
+    return { version: newVersion.version, data: newVersion.data };
+  });
 }

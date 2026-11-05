@@ -16,6 +16,7 @@
     "@peggy/auth": "workspace:*",
     "@peggy/http": "workspace:*",
     "@peggy/shared": "workspace:*",
+    "@peggy/storage": "workspace:*",
     "express": "4.21.2",
     "serverless-http": "3.2.0"
   },

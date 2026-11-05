@@ -35,11 +35,26 @@ export interface TransformPreset {
   q?: string | number;
   format?: string;
   preset?: "thumb" | "card" | "hero" | "original";
+  /**
+   * MIME of the asset being transformed. Used to route to the correct
+   * provider resource-type endpoint (image/video/raw). Defaults to image
+   * when omitted (preserves existing URLs).
+   */
+  mime?: string;
 }
 
 export interface StorageProvider {
   signUpload(req: SignRequest): Promise<{ url: string; params: Record<string, string | number | undefined> }>;
-  verifyAsset(providerKey: string): Promise<{ exists: boolean; width?: number; height?: number; mime?: string; sizeBytes?: number }>;
+  /**
+   * HEAD cross-check against the provider. `mimeHint` selects the correct
+   * provider resource-type endpoint (image/video/raw); defaults to image
+   * when the caller does not know the MIME yet.
+   */
+  verifyAsset(providerKey: string, mimeHint?: string): Promise<{ exists: boolean; width?: number; height?: number; mime?: string; sizeBytes?: number }>;
   transformUrl(providerKey: string, opts: TransformPreset, cloudName?: string): string;
-  destroy(providerKey: string): Promise<void>;
+  /**
+   * Signed provider destroy. `mimeHint` selects the resource-type endpoint;
+   * defaults to image.
+   */
+  destroy(providerKey: string, mimeHint?: string): Promise<void>;
 }
