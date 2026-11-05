@@ -32,13 +32,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await raw.query("DELETE FROM document_locales");
-  await raw.query("DELETE FROM document_versions");
-  await raw.query("DELETE FROM documents");
-  await raw.query("DELETE FROM content_fields");
+  // TRUNCATE, not DELETE: 0004_convergence makes document_versions immutable
+  // via a row trigger that rejects DELETEs. TRUNCATE bypasses row triggers;
+  // CASCADE resolves FK ordering in a single statement.
+  await raw.query("TRUNCATE document_locales, document_versions, document_relations, documents, media_usage, content_fields, components, content_types CASCADE");
   await raw.query("DELETE FROM schema_versions WHERE owner_kind IN ('content_type','component')");
-  await raw.query("DELETE FROM components");
-  await raw.query("DELETE FROM content_types");
   await raw.query(
     `INSERT INTO locales (code, name, is_default, is_active) VALUES ('en', 'English', true, true)
      ON CONFLICT (code) DO UPDATE SET is_default = true`,
