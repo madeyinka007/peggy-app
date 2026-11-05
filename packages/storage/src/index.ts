@@ -1,3 +1,3 @@
 export * from "./provider.js";
 export { CloudinaryProvider } from "./cloudinary-provider.js";
-export { MediaService } from "./media-service.js";
+export { MediaService, FileTooLargeError, NotFoundError } from "./media-service.js";

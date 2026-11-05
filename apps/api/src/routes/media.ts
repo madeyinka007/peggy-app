@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { MediaService } from "@peggy/storage";
+import { MediaService, FileTooLargeError } from "@peggy/storage";
 import { authenticate, requireAuth, requirePermission } from "@peggy/auth";
 
 export const mediaRouter = Router();
@@ -13,6 +13,35 @@ let service = new MediaService();
 export function initMediaService(db: ConstructorParameters<typeof MediaService>[0], provider?: ConstructorParameters<typeof MediaService>[1]) {
   service = new MediaService(db, provider);
   return service;
+}
+
+// T052/FR-004: map service policy errors to 422 with machine-readable
+// details. FileTooLargeError carries { limit, received } on the instance —
+// prefer it over parsing the message, falling back to message matching for
+// errors that cross a serialization boundary.
+function policyError(e: unknown): { status: number; body: { code: string; message: string; limit?: number; received?: number } } | null {
+  const msg = e instanceof Error ? e.message : String(e);
+  // Prefer the typed instance (carries { limit, received }); the message
+  // fallback below covers errors that cross a serialization boundary.
+  // The typeof guard keeps this working when the storage package's types
+  // haven't been rebuilt yet (FileTooLargeError would otherwise be an
+  // unresolvable import at typecheck time).
+  if (typeof FileTooLargeError !== "undefined" && e instanceof FileTooLargeError) {
+    return { status: 422, body: { code: "FILE_TOO_LARGE", message: msg, limit: e.limit, received: e.received } };
+  }
+  if (msg.includes("MIME_NOT_ALLOWED")) return { status: 422, body: { code: "MIME_NOT_ALLOWED", message: msg } };
+  if (msg.includes("FILE_TOO_LARGE")) {
+    const details = /{"limit":(\d+),"received":(\d+)}/.exec(msg);
+    return {
+      status: 422,
+      body: {
+        code: "FILE_TOO_LARGE",
+        message: msg,
+        ...(details ? { limit: Number(details[1]), received: Number(details[2]) } : {}),
+      },
+    };
+  }
+  return null;
 }
 
 // NOTE: the 413 Content-Length guard lives app-wide in @peggy/http createApp,
@@ -36,10 +65,9 @@ mediaRouter.post("/media/sign", async (req, res) => {
     const out = await service.signUpload(req.body);
     res.status(200).json(out);
   } catch (e) {
-    const msg = String(e);
-    if (msg.includes("MIME_NOT_ALLOWED")) return res.status(422).json({ error: { code: "MIME_NOT_ALLOWED", message: msg } });
-    if (msg.includes("FILE_TOO_LARGE")) return res.status(422).json({ error: { code: "FILE_TOO_LARGE", message: msg } });
-    res.status(400).json({ error: msg });
+    const mapped = policyError(e);
+    if (mapped) return res.status(mapped.status).json({ error: mapped.body });
+    res.status(400).json({ error: String(e) });
   }
 });
 
@@ -56,8 +84,8 @@ mediaRouter.post("/media", async (req, res) => {
     if (msg.includes("PROVIDER_KEY_NOT_FOUND")) return res.status(422).json({ error: { code: "PROVIDER_KEY_NOT_FOUND", message: msg } });
     // MIME/size are re-enforced at confirm time (policy gate, not client bug
     // passthrough) — 422 with details, matching the sign route (T052/FR-004).
-    if (msg.includes("MIME_NOT_ALLOWED")) return res.status(422).json({ error: { code: "MIME_NOT_ALLOWED", message: msg } });
-    if (msg.includes("FILE_TOO_LARGE")) return res.status(422).json({ error: { code: "FILE_TOO_LARGE", message: msg } });
+    const mapped = policyError(e);
+    if (mapped) return res.status(mapped.status).json({ error: mapped.body });
     if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
     res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
@@ -136,8 +164,8 @@ mediaRouter.post("/media/:id/replace", async (req, res) => {
   } catch (e) {
     const msg = String(e);
     if (msg.includes("PROVIDER_KEY_NOT_FOUND")) return res.status(422).json({ error: { code: "PROVIDER_KEY_NOT_FOUND", message: msg } });
-    if (msg.includes("MIME_NOT_ALLOWED")) return res.status(422).json({ error: { code: "MIME_NOT_ALLOWED", message: msg } });
-    if (msg.includes("FILE_TOO_LARGE")) return res.status(422).json({ error: { code: "FILE_TOO_LARGE", message: msg } });
+    const mapped = policyError(e);
+    if (mapped) return res.status(mapped.status).json({ error: mapped.body });
     if (msg.includes("UNKNOWN_POLICY")) return res.status(422).json({ error: { code: "UNKNOWN_POLICY", message: msg } });
     if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
     res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
