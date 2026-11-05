@@ -193,7 +193,14 @@ mediaRouter.post("/media-folders", async (req, res) => {
     const row = await service.createFolder(folderBody);
     res.status(201).json(row);
   } catch (e) {
-    res.status(400).json({ error: String(e) });
+    // T053/FR-005: the service pre-checks depth and maps the trigger error
+    // to a coded FOLDER_DEPTH_EXCEEDED — surface it as 422 like the
+    // rename/move route below.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("FOLDER_CYCLE")) return res.status(422).json({ error: { code: "FOLDER_CYCLE", message: msg } });
+    if (msg.includes("FOLDER_DEPTH_EXCEEDED")) return res.status(422).json({ error: { code: "FOLDER_DEPTH_EXCEEDED", message: msg } });
+    if (msg.includes("FOLDER_NAME_INVALID")) return res.status(422).json({ error: { code: "FOLDER_NAME_INVALID", message: msg } });
+    res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
 });
 
