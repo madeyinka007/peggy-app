@@ -12,6 +12,7 @@
     "test": "echo \"no tests yet\""
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.12",
     "@peggy/db": "workspace:*",
     "@peggy/shared": "workspace:*",
     "@peggy/config": "workspace:*",
@@ -20,6 +21,8 @@
     "drizzle-orm": "0.45.4"
   },
   "devDependencies": {
+    "@types/pg": "8.11.10",
+    "pg": "8.13.1",
     "tsx": "4.19.2",
     "vitest": "4.1.12"
   }
