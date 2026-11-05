@@ -63,7 +63,7 @@ As Emeka, I want delete/replace guarded by references so that I never break publ
 - **FR-001**: System MUST provide `POST /api/v1/media/sign` validating MIME allowlist + size limits, returning signed provider params (no bytes through handler).
 - **FR-002**: System MUST provide `POST /api/v1/media` confirming provider upload by `providerKey` and creating the `media_assets` metadata row.
 - **FR-003**: System MUST reject direct large file POST to the API with `413 PAYLOAD_TOO_LARGE` pointing to the signed flow.
-- **FR-004**: System MUST block `.exe` and `image/svg+xml` (default) with `422 MIME_NOT_ALLOWED`; oversize with `422 FILE_TOO_LARGE { limit, received }`.
+- **FR-004**: System MUST block `.exe` and `image/svg+xml` (always — no opt-in, T055) with `422 MIME_NOT_ALLOWED`; oversize with `422 FILE_TOO_LARGE { limit, received }`.
 - **FR-005**: System MUST provide folder CRUD (`media_folders` self-FK, materialized `path`, cycle rejection, depth limit 8).
 - **FR-006**: System MUST maintain the `media_usage` ledger (asset ↔ document, locale, field_path) for O(1) delete guards.
 - **FR-007**: System MUST return `409 MEDIA_REFERENCED { references[] }` when deleting an asset referenced by published content without `?force=true`.
@@ -86,7 +86,7 @@ As Emeka, I want delete/replace guarded by references so that I never break publ
 - Folder move creating a cycle (move into own descendant) → 422 `FOLDER_CYCLE`.
 - Folder depth exceeding 8 → 422 `FOLDER_DEPTH_EXCEEDED`.
 - Replace with `update-references` moves `media_usage` rows to the new asset; `keep-both` leaves them.
-- SVG upload with explicit enable + sanitization flag → allowed; without → 422.
+- SVG upload → 422 `MIME_NOT_ALLOWED` (hard-reject, T055: no sanitization path in the sign-only direct-upload flow, so no opt-in exists).
 
 ## Out of Scope
 

@@ -51,8 +51,8 @@ export class CloudinaryProvider implements StorageProvider {
     // Fail closed: never report an asset as existing when we could not
     // actually check. Callers (confirm/replace) depend on this to enforce
     // the signed-upload trust boundary. Local dev without credentials can
-    // set CLOUDINARY_ALLOW_UNVERIFIED=true to skip verification explicitly
-    // (mirrors the CLOUDINARY_ALLOW_SVG pattern), but never in production.
+    // set CLOUDINARY_ALLOW_UNVERIFIED=true to skip verification explicitly,
+    // but never in production.
     if (!configured()) {
       if (process.env.CLOUDINARY_ALLOW_UNVERIFIED === "true") {
         console.warn("[cloudinary] verify skipped: unconfigured provider + CLOUDINARY_ALLOW_UNVERIFIED=true");

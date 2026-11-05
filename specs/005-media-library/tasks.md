@@ -241,7 +241,7 @@
 - [x] T052 Map service `MIME_NOT_ALLOWED` / `FILE_TOO_LARGE` to 422 with `{ limit, received }` details on `POST /api/v1/media` and `POST /api/v1/media/:id/replace` in `apps/api/src/routes/media.ts` (service re-enforces per T038 but routes fall through to 400) per FR-004 (partial)
 - [x] T053 Map trigger `FOLDER_DEPTH_EXCEEDED` to 422 on folder create in `packages/storage/src/media-service.ts` `createFolder` (add try/catch like `renameOrMoveFolder`) plus a service-level depth pre-check per FR-005 (partial)
 - [x] T054 Reconcile `media_usage` ledger on document update and restore in `packages/auth/src/documents.ts`: delete stale rows and insert current refs in the same transaction (delete-then-insert, complements T043 PK) so removed refs stop causing false 409s and `restoreVersion` refs are recorded per FR-006 (partial)
-- [ ] T055 Sanitize-or-reject SVG uploads: add SVG sanitization when `CLOUDINARY_ALLOW_SVG=true` in `packages/storage/src/media-service.ts` (or keep hard-reject), per spec edge case (partial)
+- [x] T055 Sanitize-or-reject SVG uploads: add SVG sanitization when `CLOUDINARY_ALLOW_SVG=true` in `packages/storage/src/media-service.ts` (or keep hard-reject), per spec edge case (partial)
 - [ ] T056 Add automated P-03 boundary enforcement (eslint `no-restricted-imports` confining `cloudinary` imports to `packages/storage/src/cloudinary-provider.ts`, or arch test) per SC-005 (partial)
 
 ## Phase 12: Convergence

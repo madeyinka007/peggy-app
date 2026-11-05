@@ -69,12 +69,14 @@ function maxForMime(mime: string): number {
 }
 
 function allowedMime(mime: string): boolean {
-  // SVG is active content (XSS via <script>/event handlers) — never allow it
-  // by default. CLOUDINARY_ALLOW_SVG=true opts in explicitly, and even then
-  // delivery through Cloudinary serves it as a rasterized/derived image;
-  // the raw bytes are never served from our origin (T055 decision: no
-  // in-house sanitizer dependency — Cloudinary handles derivation).
-  if (mime === "image/svg+xml") return process.env.CLOUDINARY_ALLOW_SVG === "true";
+  // SVG is active content (XSS via <script>/event handlers) — always reject.
+  // T055 decision (keep hard-reject): the signed flow uploads direct from
+  // browser to provider, so the server never sees the bytes and cannot
+  // sanitize them; the stored `original` delivery URL would serve the raw,
+  // script-capable SVG from a trusted asset host. There is therefore no
+  // safe opt-in — the former CLOUDINARY_ALLOW_SVG escape hatch was removed
+  // rather than left as an unsanitized bypass.
+  if (mime === "image/svg+xml") return false;
   if (ALLOWED_MIME_EXACT.has(mime)) return true;
   return ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p));
 }

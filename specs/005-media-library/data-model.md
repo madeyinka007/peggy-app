@@ -39,7 +39,7 @@ Source: `doc/03-database-model.md` §16–§17. All three tables are **system me
 
 **Indexes**: `UNIQUE(provider, provider_key)`; `INDEX(folder_id)`; `INDEX(mime text_pattern_ops)`; `INDEX(hash_sha256)`; partial `INDEX WHERE deleted_at IS NULL`.
 
-**Policy (service, not schema)**: SVG blocked by default (XSS) unless sanitized + explicit enable; MIME allowlist + size limits configurable via env.
+**Policy (service, not schema)**: SVG always rejected (XSS, T055 — no sanitization path in the sign-only direct-upload flow); MIME allowlist + size limits configurable via env.
 
 **Lifecycle**: signed → confirmed (HEAD cross-check) → attached (media_usage row) → replaced (new row, refs moved per policy) → soft-deleted (provider destroy queued) → purged.
 

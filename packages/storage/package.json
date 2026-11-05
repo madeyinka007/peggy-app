@@ -15,5 +15,8 @@
     "drizzle-orm": "0.45.4",
     "@peggy/db": "workspace:*",
     "@peggy/config": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "4.1.12"
   }
 }
