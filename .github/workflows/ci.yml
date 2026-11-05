@@ -7,6 +7,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # T051: secret-scan gate (Constitution VI) — fail the run if any commit
+  # introduces a real credential. Uses the community gitleaks config.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   setup:
     runs-on: ubuntu-latest
     steps:
