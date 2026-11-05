@@ -127,7 +127,7 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T030 Update `docs/checklist.md` — mark Media Library phase complete
+- [X] T030 Update `docs/checklist.md` — mark Media Library phase complete (done: Slice 5 section marked ✅ COMPLETE)
 - [X] T031 Enforce module boundaries: verify no `cloudinary` import outside `packages/storage/src/cloudinary-provider.ts` (arch test / `nx enforce-module-boundaries` — SC-005)
 - [ ] T032 Run `quickstart.md` validation (folder → sign → direct PUT → confirm → transform URLs → delete guard) and fix any gaps
 - [X] T033 Handle edge cases: SVG blocked default, oversize in upload flow, `PROVIDER_KEY_NOT_FOUND` on confirm, folder `path` cascade on move
@@ -226,37 +226,37 @@
 
 - [ ] T041 Verify green: `gh pr checks 5`; local `pnpm install && pnpm nx run-many -t typecheck`; e2e smoke (sign → PUT → confirm → transform URLs → delete) per `quickstart.md`
 - [ ] T042 Decide read auth: `GET /media`, `GET /media/:id`, `GET /media-folders` currently auth-only — confirm open-read intentional or add `media:view` check in `apps/api/src/routes/media.ts`
-- [ ] T043 `media_usage` integrity: add PK/unique constraint + FKs for `documentId`/`versionId` (or cleanup job on document delete); migration + `packages/db/src/schema-media.ts`
-- [ ] T044 Trigger `LIKE` wildcard: `WHERE path LIKE OLD.path || '/%'` → `starts_with(path, OLD.path || '/')` in `0006_media_library.sql`; validate folder names `[^/]{1,64}` in `packages/storage/src/media-service.ts`
-- [ ] T045 `updateAsset`: handle explicit `null` folderId as move-to-root (currently no-op); don't pass `undefined` alt/caption into `.set()` in `packages/storage/src/media-service.ts`
-- [ ] T046 `replaceAsset`: validate `policy` (reject unknown), retire/mark old asset, map duplicate-`providerKey` violation to 409 like confirm (`packages/storage/src/media-service.ts`, `apps/api/src/routes/media.ts`)
-- [ ] T047 Pagination + errors: clamp `page`/`pageSize`, add `ORDER BY createdAt, id` for stable pages; map `String(e)` to coded errors; try/catch on GET/PATCH handlers in `apps/api/src/routes/media.ts`
-- [ ] T048 Deps/config: drop unused `cloudinary` from `packages/storage/package.json` (provider uses raw `fetch`) *or* adopt SDK; add missing `@peggy/storage` to `apps/api/package.json`; add `CLOUDINARY_ALLOW_UNVERIFIED=true` (local-dev-only) to `.env.example`
-- [ ] T049 Docs: flesh out media OpenAPI paths beyond summary stubs or file follow-up; close out T030/T032 as applicable
-- [ ] T050 Merge PR #5 (re-request review if needed), delete branch, verify migration `0006` + `CLOUDINARY_*` vars in deployed env
+- [X] T043 `media_usage` integrity: add PK/unique constraint + FKs for `documentId`/`versionId` (or cleanup job on document delete); migration + `packages/db/src/schema-media.ts` (done: composite PK + FKs in `schema-media.ts`, migration `0007_media_usage_integrity.sql`; verified Nov 2026)
+- [ ] T044 Trigger `LIKE` wildcard: `WHERE path LIKE OLD.path || '/%'` → `starts_with(path, OLD.path || '/')` in `0006_media_library.sql`; validate folder names `[^/]{1,64}` in `packages/storage/src/media-service.ts` (PARTIAL Nov 2026: folder-name validation done in `media-service.ts`; trigger still uses `LIKE` — needs a new migration, 0006 is deployed)
+- [X] T045 `updateAsset`: handle explicit `null` folderId as move-to-root (currently no-op); don't pass `undefined` alt/caption into `.set()` in `packages/storage/src/media-service.ts` (done: `updateAsset` distinguishes `null` vs `undefined`; verified Nov 2026)
+- [X] T046 `replaceAsset`: validate `policy` (reject unknown), retire/mark old asset, map duplicate-`providerKey` violation to 409 like confirm (`packages/storage/src/media-service.ts`, `apps/api/src/routes/media.ts`) (done: `UNKNOWN_POLICY` check + old-row retirement + 409 mapping; verified Nov 2026)
+- [X] T047 Pagination + errors: clamp `page`/`pageSize`, add `ORDER BY createdAt, id` for stable pages; map `String(e)` to coded errors; try/catch on GET/PATCH handlers in `apps/api/src/routes/media.ts` (done; verified Nov 2026)
+- [ ] T048 Deps/config: drop unused `cloudinary` from `packages/storage/package.json` (provider uses raw `fetch`) *or* adopt SDK; add missing `@peggy/storage` to `apps/api/package.json`; add `CLOUDINARY_ALLOW_UNVERIFIED=true` (local-dev-only) to `.env.example` (PARTIAL Nov 2026: deps correct — no `cloudinary` dep, `@peggy/storage` present; only the `.env.example` line is missing)
+- [X] T049 Docs: flesh out media OpenAPI paths beyond summary stubs or file follow-up; close out T030/T032 as applicable (done: full media paths with 201/404/409/422 responses in `openapi.ts`; verified Nov 2026)
+- [ ] T050 Merge PR #5 (re-request review if needed), delete branch, verify migration `0006` + `CLOUDINARY_*` vars in deployed env (PARTIAL Nov 2026: PR #5 MERGED 2026-10-30; branch deletion + deployed-env verification pending)
 
 ## Phase 11: Convergence
 
-- [ ] T051 CRITICAL — Verify whether the `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` values in `.env.example` are real: if real, rotate them immediately and restore placeholder values; confirm the CI secret-scan gate passes per Constitution VI (contradicts)
+- [X] T051 CRITICAL — Verify whether the `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` values in `.env.example` are real: if real, rotate them immediately and restore placeholder values; confirm the CI secret-scan gate passes per Constitution VI (contradicts) (done Nov 2026: values are empty placeholders through history; gitleaks `secret-scan` gate present in `ci.yml`)
 - [x] T052 Map service `MIME_NOT_ALLOWED` / `FILE_TOO_LARGE` to 422 with `{ limit, received }` details on `POST /api/v1/media` and `POST /api/v1/media/:id/replace` in `apps/api/src/routes/media.ts` (service re-enforces per T038 but routes fall through to 400) per FR-004 (partial)
 - [x] T053 Map trigger `FOLDER_DEPTH_EXCEEDED` to 422 on folder create in `packages/storage/src/media-service.ts` `createFolder` (add try/catch like `renameOrMoveFolder`) plus a service-level depth pre-check per FR-005 (partial)
 - [x] T054 Reconcile `media_usage` ledger on document update and restore in `packages/auth/src/documents.ts`: delete stale rows and insert current refs in the same transaction (delete-then-insert, complements T043 PK) so removed refs stop causing false 409s and `restoreVersion` refs are recorded per FR-006 (partial)
 - [x] T055 Sanitize-or-reject SVG uploads: add SVG sanitization when `CLOUDINARY_ALLOW_SVG=true` in `packages/storage/src/media-service.ts` (or keep hard-reject), per spec edge case (partial)
-- [ ] T056 Add automated P-03 boundary enforcement (eslint `no-restricted-imports` confining `cloudinary` imports to `packages/storage/src/cloudinary-provider.ts`, or arch test) per SC-005 (partial)
+- [X] T056 Add automated P-03 boundary enforcement (eslint `no-restricted-imports` confining `cloudinary` imports to `packages/storage/src/cloudinary-provider.ts`, or arch test) per SC-005 (partial) (done: `no-restricted-imports` in root `eslint.config.mjs` with carve-out for the provider file; verified Nov 2026)
 
 ## Phase 12: Convergence
 
-- [ ] T057 Route Cloudinary sign/verify/transform/destroy through per-MIME `resource_type` (`image`/`video`/`raw`) instead of hardcoded `image/` endpoints in `packages/storage/src/cloudinary-provider.ts` (policy allows video/audio/pdf but the signed flow only works for images) per FR-001/FR-002 (partial)
-- [ ] T058 Surface provider-destroy failures in `MediaService.deleteAsset` in `packages/storage/src/media-service.ts`: audit-log the failure (and record pending-destroy for retry) instead of silently swallowing it, so soft-deleted rows cannot orphan live provider files per FR-009 (partial)
+- [X] T057 Route Cloudinary sign/verify/transform/destroy through per-MIME `resource_type` (`image`/`video`/`raw`) instead of hardcoded `image/` endpoints in `packages/storage/src/cloudinary-provider.ts` (policy allows video/audio/pdf but the signed flow only works for images) per FR-001/FR-002 (partial) (done: `resourceTypeForMime()` used in sign/verify/transform/destroy; verified Nov 2026)
+- [X] T058 Surface provider-destroy failures in `MediaService.deleteAsset` in `packages/storage/src/media-service.ts`: audit-log the failure (and record pending-destroy for retry) instead of silently swallowing it, so soft-deleted rows cannot orphan live provider files per FR-009 (partial) (done: `PENDING_DESTROY` + warn log; verified Nov 2026)
 - [ ] T059 Align the app-wide 413 guard threshold with the 1mb JSON body limit in `packages/http/src/app.ts` so 1–10mb direct POSTs also receive the 413 `{ signedFlow }` pointer instead of the generic body-parser error per FR-003 (partial)
 
 ## Phase 13: Convergence
 
-- [ ] T060 Attach `{ limit, received }` details to 422 `FILE_TOO_LARGE` on `POST /api/v1/media/sign`: include limit/received numbers in the `MediaService.signUpload` error (`packages/storage/src/media-service.ts`) and surface them in the sign route error envelope (`apps/api/src/routes/media.ts`) per FR-004 / contracts (partial)
-- [ ] T061 Return 404 instead of 204 when deleting a nonexistent asset or folder: add existence checks in `MediaService.deleteAsset` / `deleteFolder` (`packages/storage/src/media-service.ts`) and map to 404 in `apps/api/src/routes/media.ts` per contract error conventions (partial)
+- [X] T060 Attach `{ limit, received }` details to 422 `FILE_TOO_LARGE` on `POST /api/v1/media/sign`: include limit/received numbers in the `MediaService.signUpload` error (`packages/storage/src/media-service.ts`) and surface them in the sign route error envelope (`apps/api/src/routes/media.ts`) per FR-004 / contracts (partial) (done: `FileTooLargeError` carries `{ limit, received }`, surfaced by `policyError()`; verified Nov 2026)
+- [X] T061 Return 404 instead of 204 when deleting a nonexistent asset or folder: add existence checks in `MediaService.deleteAsset` / `deleteFolder` (`packages/storage/src/media-service.ts`) and map to 404 in `apps/api/src/routes/media.ts` per contract error conventions (partial) (done: `NotFoundError` + 404 mapping on both paths; verified Nov 2026)
 
 ## Phase 14: Convergence
 
-- [ ] T062 Route stored asset delivery URLs through per-MIME `resource_type` in `MediaService.confirmUpload` / `replaceAsset` (`packages/storage/src/media-service.ts`) instead of hardcoded `/image/upload/` so video/audio/pdf rows get valid `url` / `secureUrl` per FR-002 (partial)
-- [ ] T063 Omit the empty transform segment in `CloudinaryProvider.transformUrl` (`packages/storage/src/cloudinary-provider.ts`) so video/raw assets without image transforms don't produce `upload//<key>` URLs per FR-008 (partial)
-- [ ] T064 Fix folder-depth pre-check off-by-one in `MediaService.createFolder` (`packages/storage/src/media-service.ts`) so depth-8 folders are allowed (matching the trigger/spec limit) per FR-005 (partial)
+- [X] T062 Route stored asset delivery URLs through per-MIME `resource_type` in `MediaService.confirmUpload` / `replaceAsset` (`packages/storage/src/media-service.ts`) instead of hardcoded `/image/upload/` so video/audio/pdf rows get valid `url` / `secureUrl` per FR-002 (partial) (done: `deliveryUrl()` helper routes via `resourceTypeForMime`; verified Nov 2026)
+- [X] T063 Omit the empty transform segment in `CloudinaryProvider.transformUrl` (`packages/storage/src/cloudinary-provider.ts`) so video/raw assets without image transforms don't produce `upload//<key>` URLs per FR-008 (partial) (done; verified Nov 2026)
+- [X] T064 Fix folder-depth pre-check off-by-one in `MediaService.createFolder` (`packages/storage/src/media-service.ts`) so depth-8 folders are allowed (matching the trigger/spec limit) per FR-005 (partial) (done: counts ancestors without pre-increment, code cites T064; verified Nov 2026)
