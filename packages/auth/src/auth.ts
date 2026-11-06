@@ -30,7 +30,13 @@ export function createAuth() {
     advanced: {
       database: { generateId: false },
       defaultCookieAttributes: {
-        domain: ".parent",
+        // COOKIE_DOMAIN is "localhost" in local dev: omit Domain so the
+        // browser stores a host-only cookie (browsers reject Domain=.parent
+        // and Domain=localhost on localhost). Any other value keeps the
+        // previous production behavior.
+        ...(config.COOKIE_DOMAIN === "localhost"
+          ? {}
+          : { domain: config.COOKIE_DOMAIN || ".parent" }),
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         httpOnly: true,
