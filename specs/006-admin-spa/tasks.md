@@ -105,7 +105,7 @@
 
 - [X] T028 [P] Verify static export in `apps/admin` (`pnpm build` → `out/`; serve statically and confirm deep links `/content/?contentType=…`, `/media/`, `/content-types/` resolve; every view shows loading/error states with no server; Amplify SPA-rewrite note recorded if config needed)
 - [X] T029 [P] Run full gates for `apps/admin` (`pnpm typecheck`, `pnpm lint` incl. T003 P-04 ban, `pnpm test`; P-07 grep confirming no `Post*`-/`<TypeName>Form`-style components)
-- [ ] T030 Run full quickstart.md validation (steps 1–7) against a live API and record pass/fail per SC-001…SC-006 in the task/ PR notes
+- [X] T030 Run full quickstart.md validation (steps 1–7) against a live API and record pass/fail per SC-001…SC-006 in the task/ PR notes (2026-11-06, API :3002 vs `peggy_slice6`: SC-001/002/003/004/006 PASS, SC-005 partial — provider byte-upload unconfigured in env; BUG: referenced-asset DELETE returns 400 not contracted 409 `MEDIA_REFERENCED`, `routes/media.ts:144` `startsWith` vs `"Error: "` prefix; PUT-new-locale unsupported by design, admin R-07 create-path adapts; results in research.md §T030)
 
 ---
 
