@@ -86,6 +86,9 @@ mediaRouter.post("/media", async (req, res) => {
     // passthrough) — 422 with details, matching the sign route (T052/FR-004).
     const mapped = policyError(e);
     if (mapped) return res.status(mapped.status).json({ error: mapped.body });
+    // Service throws a coded PROVIDER_KEY_CONFLICT for live duplicates;
+    // keep the raw PG message match as a fallback (insert race).
+    if (msg.includes("PROVIDER_KEY_CONFLICT")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
     if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
     res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }
@@ -167,6 +170,9 @@ mediaRouter.post("/media/:id/replace", async (req, res) => {
     const mapped = policyError(e);
     if (mapped) return res.status(mapped.status).json({ error: mapped.body });
     if (msg.includes("UNKNOWN_POLICY")) return res.status(422).json({ error: { code: "UNKNOWN_POLICY", message: msg } });
+    // Same coded-conflict mapping as confirm (service throws coded
+    // PROVIDER_KEY_CONFLICT for live duplicates; raw PG text is the fallback).
+    if (msg.includes("PROVIDER_KEY_CONFLICT")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
     if (msg.includes("duplicate") || msg.includes("unique")) return res.status(409).json({ error: { code: "PROVIDER_KEY_CONFLICT", message: msg } });
     res.status(400).json({ error: { code: "BAD_REQUEST", message: msg } });
   }

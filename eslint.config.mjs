@@ -19,6 +19,28 @@ export default tseslint.config(
       }],
     },
   },
+  // Constitution P-04 (NON-NEGOTIABLE): the admin SPA is a pure API consumer.
+  // No server-only modules in apps/admin — runtime fetch + better-auth client only.
+  {
+    files: ['apps/admin/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          { name: '@peggy/db', message: 'Constitution P-04: apps/admin is a pure API consumer — use lib/api-client.ts instead.' },
+          { name: '@peggy/auth', message: 'Constitution P-04: apps/admin is a pure API consumer — use lib/api-client.ts + better-auth/react instead.' },
+          { name: '@peggy/storage', message: 'Constitution P-04: apps/admin is a pure API consumer — use lib/api-client.ts instead.' },
+          { name: '@peggy/http', message: 'Constitution P-04: apps/admin is a pure API consumer — use lib/api-client.ts instead.' },
+          { name: 'express', message: 'Constitution P-04: no server framework in apps/admin.' },
+          { name: 'serverless-http', message: 'Constitution P-04: no server adapter in apps/admin.' },
+          { name: 'drizzle-orm', message: 'Constitution P-04: no DB access in apps/admin.' },
+        ],
+        patterns: [{
+          group: ['better-auth', 'better-auth/*', '!better-auth/react', '!better-auth/client'],
+          message: 'Constitution P-04/AuthPort: apps/admin may only use the better-auth client (better-auth/react or better-auth/client) — never the server package.',
+        }],
+      }],
+    },
+  },
   {
     files: ['packages/storage/src/cloudinary-provider.ts'],
     rules: {

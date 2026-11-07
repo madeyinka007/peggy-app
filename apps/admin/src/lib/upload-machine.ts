@@ -96,6 +96,8 @@ export function humanUploadMessage(err: unknown): string {
       return "A folder cannot be moved inside itself or one of its children.";
     case "FOLDER_NAME_INVALID":
       return "Folder names must be 1–64 characters with no slashes.";
+    case "PROVIDER_KEY_CONFLICT":
+      return "This image was already uploaded — pick it from the library instead of uploading again.";
     default:
       return e.message ?? fallback;
   }

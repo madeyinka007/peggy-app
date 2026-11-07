@@ -51,8 +51,19 @@ export function UploadDropzone({ folderId, alt, onDone }: UploadDropzoneProps) {
         };
         xhr.onerror = () => reject(new Error("Network error during provider upload."));
         const form = new FormData();
+        // Cloudinary wire names differ from the API's camelCase contract:
+        // apiKey→api_key, publicId→public_id; cloudName rides in the URL,
+        // not the form (an unknown field breaks signature verification).
+        const wireName = (k: string): string | null => {
+          if (k === "apiKey") return "api_key";
+          if (k === "publicId") return "public_id";
+          if (k === "cloudName") return null;
+          return k;
+        };
         for (const [k, v] of Object.entries(params)) {
-          if (v !== undefined) form.append(k, String(v));
+          if (v === undefined) continue;
+          const w = wireName(k);
+          if (w) form.append(w, String(v));
         }
         form.append("file", file);
         xhr.send(form);

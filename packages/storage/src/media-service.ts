@@ -128,6 +128,34 @@ export class MediaService {
     const limit = maxForMime(mime);
     if (sizeBytes > limit) throw new FileTooLargeError(limit, sizeBytes);
     const db = this.db;
+    // A soft-deleted row with the same key blocks the unique constraint and
+    // breaks delete-then-reupload. Resurrect it instead of inserting: the
+    // provider copy was destroyed on delete, and verifyAsset just confirmed
+    // the key is live again. A *live* row with the key is a true duplicate.
+    const [existing] = await db.select().from(mediaAssets).where(
+      and(eq(mediaAssets.provider, "cloudinary"), eq(mediaAssets.providerKey, req.providerKey)),
+    );
+    if (existing && !existing.deletedAt) throw new Error("PROVIDER_KEY_CONFLICT: asset already exists");
+    if (existing) {
+      const [resurrected] = await db.update(mediaAssets).set({
+        deletedAt: null,
+        url: deliveryUrl(req.providerKey, mime),
+        secureUrl: deliveryUrl(req.providerKey, mime),
+        mime,
+        sizeBytes,
+        width: req.width ?? verified.width,
+        height: req.height ?? verified.height,
+        durationS: req.durationS,
+        hashSha256: req.hashSha256,
+        folderId: req.folderId,
+        alt: req.alt,
+        caption: req.caption,
+        uploadedBy: req.uploadedBy,
+        updatedAt: new Date(),
+      }).where(eq(mediaAssets.id, existing.id)).returning();
+      if (!resurrected) throw new Error("Failed to restore asset");
+      return { ...resurrected, transformUrls: this.transformUrls(resurrected.providerKey, resurrected.mime) };
+    }
     const [row] = await db.insert(mediaAssets).values({
       provider: "cloudinary",
       providerKey: req.providerKey,
@@ -159,7 +187,10 @@ export class MediaService {
     if (opts.q) conditions.push(sql`${mediaAssets.alt} ILIKE ${"%" + opts.q + "%"}`);
     const where = conditions.reduce((a, b) => sql`${a} AND ${b}`);
     const rows = await db.select().from(mediaAssets).where(where as never).orderBy(mediaAssets.createdAt, mediaAssets.id).limit(pageSize).offset(offset);
-    return { data: rows, meta: { page, pageSize } };
+    // Attach transform URLs like getAsset does — the admin grid/picker
+    // render thumbs from the list response, not per-asset reads.
+    const data = rows.map((row) => ({ ...row, transformUrls: this.transformUrls(row.providerKey, row.mime) }));
+    return { data, meta: { page, pageSize } };
   }
 
   async getAsset(id: string) {
