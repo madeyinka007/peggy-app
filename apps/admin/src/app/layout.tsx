@@ -8,8 +8,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body style={{ margin: 0, fontFamily: "sans-serif" }}>
         <AuthProvider>
-          <Nav />
-          {children}
+          <div style={{ display: "flex", minHeight: "100vh" }}>
+            <Nav />
+            <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+          </div>
         </AuthProvider>
       </body>
     </html>

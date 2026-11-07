@@ -1,5 +1,5 @@
 /**
- * Auth + nav behavior tests (T014/US4). Mocks better-auth/react's
+ * Auth + sidebar behavior tests. Mocks better-auth/react's
  * createAuthClient so no network is touched.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -55,19 +55,23 @@ describe("auth gating", () => {
       </>,
     );
     expect(screen.getByTestId("who").textContent).toBe("anon");
-    expect(screen.queryByRole("link", { name: "Content-Types" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Content-Type Builder" })).toBeNull();
     expect(screen.getByTestId("types").textContent).toBe("no");
   });
 
   it("author (non-admin, no permissions resolved) sees Content + Media only", async () => {
     sessionState = { user: { id: "u1", email: "author@example.com", name: "A", isSuperAdmin: false } };
     renderWithAuth(<Nav />);
-    expect(screen.getByRole("link", { name: "Content" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Media" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Content Manager" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Media Library" })).toBeTruthy();
     // myPermissions() mock resolves null → progressive disclosure settles to hidden.
     await waitFor(() =>
-      expect(screen.queryByRole("link", { name: "Content-Types" })).toBeNull(),
+      expect(screen.queryByRole("link", { name: "Content-Type Builder" })).toBeNull(),
     );
+    // Administration sections stay hidden too.
+    expect(screen.queryByRole("link", { name: "Users" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Roles" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
   });
 
   it("super-admin sees all sections", () => {
@@ -78,7 +82,12 @@ describe("auth gating", () => {
         <Probe />
       </>,
     );
-    expect(screen.getByRole("link", { name: "Content-Types" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Content Manager" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Media Library" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Content-Type Builder" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Users" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Roles" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
     expect(screen.getByTestId("types").textContent).toBe("yes");
   });
 
