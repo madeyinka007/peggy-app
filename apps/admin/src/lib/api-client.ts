@@ -10,6 +10,7 @@ import type {
   MediaAsset,
   MediaFolder,
   RegistryComponent,
+  RegistryField,
   RegistryView,
 } from "./types";
 
@@ -114,6 +115,125 @@ export function listContentTypes(): Promise<Listed<RegistryView>> {
 
 export function getContentType(id: string): Promise<RegistryView> {
   return request(`/content-types/${encodeURIComponent(id)}`);
+}
+
+export interface CreateContentTypeInput {
+  name: string;
+  kind: "collection" | "single";
+  collectionSlug: string;
+  displayName?: string | undefined;
+  description?: string | undefined;
+  isLocalized?: boolean | undefined;
+  hasDraftPublish?: boolean | undefined;
+}
+
+export function createContentType(input: CreateContentTypeInput): Promise<RegistryView> {
+  return request("/content-types", withBody("POST", input));
+}
+
+export function updateContentType(
+  id: string,
+  patch: Partial<CreateContentTypeInput>,
+): Promise<RegistryView> {
+  return request(`/content-types/${encodeURIComponent(id)}`, withBody("PUT", patch));
+}
+
+export async function deleteContentType(id: string, force = false): Promise<void> {
+  await request(`/content-types/${encodeURIComponent(id)}${query({ force: force ? "true" : undefined })}`, {
+    method: "DELETE",
+  });
+}
+
+export interface CreateComponentInput {
+  name: string;
+  displayName?: string | undefined;
+  category?: string | undefined;
+}
+
+export function createComponent(input: CreateComponentInput): Promise<RegistryComponent> {
+  return request("/components", withBody("POST", input));
+}
+
+export function getComponent(id: string): Promise<RegistryComponent> {
+  return request(`/components/${encodeURIComponent(id)}`);
+}
+
+export function updateComponent(
+  id: string,
+  patch: Partial<CreateComponentInput>,
+): Promise<RegistryComponent> {
+  return request(`/components/${encodeURIComponent(id)}`, withBody("PUT", patch));
+}
+
+export async function deleteComponent(id: string): Promise<void> {
+  await request(`/components/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export interface CreateFieldInput {
+  name: string;
+  label?: string | undefined;
+  fieldType: string;
+  required?: boolean | undefined;
+  uniqueScope?: string | null | undefined;
+  defaultValue?: unknown;
+  localized?: boolean | undefined;
+  searchable?: boolean | undefined;
+  validation?: Record<string, unknown> | undefined;
+  relationConfig?: Record<string, unknown> | null | undefined;
+  componentConfig?: Record<string, unknown> | null | undefined;
+  dynamiczoneConfig?: Record<string, unknown> | null | undefined;
+  mediaConfig?: Record<string, unknown> | null | undefined;
+  sortOrder?: number | undefined;
+}
+
+export function createContentTypeField(
+  contentTypeId: string,
+  input: CreateFieldInput,
+): Promise<RegistryField> {
+  return request(`/content-types/${encodeURIComponent(contentTypeId)}/fields`, withBody("POST", input));
+}
+
+export function createComponentField(
+  componentId: string,
+  input: CreateFieldInput,
+): Promise<RegistryField> {
+  return request(`/components/${encodeURIComponent(componentId)}/fields`, withBody("POST", input));
+}
+
+export function updateField(
+  contentTypeId: string,
+  fieldId: string,
+  patch: Partial<CreateFieldInput>,
+): Promise<RegistryField> {
+  return request(
+    `/content-types/${encodeURIComponent(contentTypeId)}/fields/${encodeURIComponent(fieldId)}`,
+    withBody("PUT", patch),
+  );
+}
+
+export async function deleteContentTypeField(contentTypeId: string, fieldId: string): Promise<void> {
+  await request(
+    `/content-types/${encodeURIComponent(contentTypeId)}/fields/${encodeURIComponent(fieldId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function updateComponentField(
+  componentId: string,
+  fieldId: string,
+  patch: Partial<CreateFieldInput>,
+): Promise<RegistryField> {
+  return request(
+    `/components/${encodeURIComponent(componentId)}/fields/${encodeURIComponent(fieldId)}`,
+    withBody("PUT", patch),
+  );
+}
+
+export async function deleteComponentField(componentId: string, fieldId: string): Promise<void> {
+  await request(
+    `/components/${encodeURIComponent(componentId)}/fields/${encodeURIComponent(fieldId)}`,
+    { method: "DELETE" },
+  );
 }
 
 export function listComponents(): Promise<Listed<RegistryComponent>> {

@@ -2,13 +2,27 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   ApiRequestError,
   confirmUpload,
+  createComponent,
+  createComponentField,
+  createContentType,
+  createContentTypeField,
   createDocument,
   deleteAsset,
+  deleteComponent,
+  deleteComponentField,
+  deleteContentType,
+  deleteContentTypeField,
+  getComponent,
+  getContentType,
   listAssets,
   listDocuments,
   publishDocument,
   signUpload,
   myPermissions,
+  updateComponent,
+  updateComponentField,
+  updateContentType,
+  updateField,
 } from "@/lib/api-client";
 
 function mockFetchOnce(status: number, body: unknown) {
@@ -95,5 +109,120 @@ describe("envelope parsing", () => {
   it("throws a network ApiRequestError when fetch rejects", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
     await expect(listDocuments("x")).rejects.toMatchObject({ status: 0 });
+  });
+});
+
+describe("registry mutations (builder foundation)", () => {
+  it("creates a content type via POST /content-types", async () => {
+    const mock = mockFetchOnce(201, { id: "ct1", name: "post", kind: "collection" });
+    const out = await createContentType({ name: "post", kind: "collection", collectionSlug: "posts" });
+    expect(out).toMatchObject({ id: "ct1" });
+    expect(mock).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
+    const [, init] = mock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({ name: "post", collectionSlug: "posts" });
+  });
+
+  it("updates a content type via PUT /content-types/:id", async () => {
+    const mock = mockFetchOnce(200, { id: "ct1", displayName: "Posts" });
+    await updateContentType("ct1", { displayName: "Posts" });
+    expect(mock).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types/ct1",
+      expect.objectContaining({ method: "PUT" }),
+    );
+  });
+
+  it("deletes a content type via DELETE, appending ?force=true only when forced", async () => {
+    const plain = mockFetchOnce(204, null);
+    await deleteContentType("ct1");
+    expect(plain).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types/ct1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    const forced = mockFetchOnce(204, null);
+    await deleteContentType("ct1", true);
+    expect(forced).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types/ct1?force=true",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("reads a single content type and component", async () => {
+    mockFetchOnce(200, { id: "ct1", fields: [] });
+    await expect(getContentType("ct1")).resolves.toMatchObject({ id: "ct1" });
+    mockFetchOnce(200, { id: "c1", fields: [] });
+    await expect(getComponent("c1")).resolves.toMatchObject({ id: "c1" });
+  });
+
+  it("creates/updates components via POST/PUT /components", async () => {
+    const post = mockFetchOnce(201, { id: "c1", name: "seo" });
+    await createComponent({ name: "seo" });
+    expect(post).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/components",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const put = mockFetchOnce(200, { id: "c1" });
+    await updateComponent("c1", { displayName: "SEO" });
+    expect(put).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/components/c1",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    const del = mockFetchOnce(204, null);
+    await deleteComponent("c1");
+    expect(del).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/components/c1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("creates content-type and component fields via their POST endpoints", async () => {
+    const ct = mockFetchOnce(201, { id: "f1", name: "title", fieldType: "text" });
+    await createContentTypeField("ct1", { name: "title", fieldType: "text" });
+    expect(ct).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types/ct1/fields",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const comp = mockFetchOnce(201, { id: "f2", name: "meta", fieldType: "text" });
+    await createComponentField("c1", { name: "meta", fieldType: "text" });
+    expect(comp).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/components/c1/fields",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("updates/deletes content-type and component fields via their nested endpoints", async () => {
+    const putCt = mockFetchOnce(200, { id: "f1", label: "Title" });
+    await updateField("ct1", "f1", { label: "Title" });
+    expect(putCt).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types/ct1/fields/f1",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    const delCt = mockFetchOnce(204, null);
+    await deleteContentTypeField("ct1", "f1");
+    expect(delCt).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/content-types/ct1/fields/f1",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    const putComp = mockFetchOnce(200, { id: "f2", label: "Meta" });
+    await updateComponentField("c1", "f2", { label: "Meta" });
+    expect(putComp).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/components/c1/fields/f2",
+      expect.objectContaining({ method: "PUT" }),
+    );
+    const delComp = mockFetchOnce(204, null);
+    await deleteComponentField("c1", "f2");
+    expect(delComp).toHaveBeenCalledWith(
+      "http://localhost:3000/api/v1/components/c1/fields/f2",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
+
+  it("surfaces 422 reserved-name errors from field creation", async () => {
+    mockFetchOnce(422, { error: "Reserved field name: id" });
+    await expect(
+      createContentTypeField("ct1", { name: "id", fieldType: "text" }),
+    ).rejects.toMatchObject({ status: 422, message: "Reserved field name: id" });
   });
 });

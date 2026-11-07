@@ -44,7 +44,8 @@ contentTypesRouter.put("/content-types/:id", async (req, res) => {
   if (ctx && !(await requirePermission(ctx as Parameters<typeof requirePermission>[0], "content-type", "update"))) return res.status(403).json({ error: "Forbidden" });
   const ct = await updateContentType(req.params.id, req.body);
   if (!ct) return res.status(404).json({ error: "Not found" });
-  res.json(ct);
+  const fields = await getFields(req.params.id);
+  res.json({ ...ct, fields });
 });
 
 contentTypesRouter.delete("/content-types/:id", async (req, res) => {
@@ -82,12 +83,16 @@ contentTypesRouter.get("/content-types/:id/fields", async (req, res) => {
 });
 
 contentTypesRouter.put("/content-types/:id/fields/:fieldId", async (req, res) => {
+  const ctx = (req as { auth?: unknown }).auth;
+  if (ctx && !(await requirePermission(ctx as Parameters<typeof requirePermission>[0], "content-type", "update"))) return res.status(403).json({ error: "Forbidden" });
   const field = await updateField(req.params.fieldId, req.body);
   if (!field) return res.status(404).json({ error: "Not found" });
   res.json(field);
 });
 
 contentTypesRouter.delete("/content-types/:id/fields/:fieldId", async (req, res) => {
+  const ctx = (req as { auth?: unknown }).auth;
+  if (ctx && !(await requirePermission(ctx as Parameters<typeof requirePermission>[0], "content-type", "update"))) return res.status(403).json({ error: "Forbidden" });
   const field = await deleteField(req.params.fieldId);
   if (!field) return res.status(404).json({ error: "Not found" });
   res.status(204).end();

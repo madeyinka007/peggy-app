@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   createComponent, getComponent, listComponents, updateComponent, deleteComponent,
-  createField, getFields,
+  createField, getFields, updateField, deleteField,
 } from "@peggy/auth";
 import { authenticate, requireAuth, requirePermission } from "@peggy/auth";
 
@@ -42,7 +42,8 @@ componentsRouter.put("/components/:id", async (req, res) => {
   if (ctx && !(await requirePermission(ctx as Parameters<typeof requirePermission>[0], "component", "update"))) return res.status(403).json({ error: "Forbidden" });
   const comp = await updateComponent(req.params.id, req.body);
   if (!comp) return res.status(404).json({ error: "Not found" });
-  res.json(comp);
+  const fields = await getFields(undefined, req.params.id);
+  res.json({ ...comp, fields });
 });
 
 componentsRouter.delete("/components/:id", async (req, res) => {
@@ -75,4 +76,20 @@ componentsRouter.post("/components/:id/fields", async (req, res) => {
 componentsRouter.get("/components/:id/fields", async (req, res) => {
   const fields = await getFields(undefined, req.params.id);
   res.json({ data: fields });
+});
+
+componentsRouter.put("/components/:id/fields/:fieldId", async (req, res) => {
+  const ctx = (req as { auth?: unknown }).auth;
+  if (ctx && !(await requirePermission(ctx as Parameters<typeof requirePermission>[0], "component", "update"))) return res.status(403).json({ error: "Forbidden" });
+  const field = await updateField(req.params.fieldId, req.body);
+  if (!field) return res.status(404).json({ error: "Not found" });
+  res.json(field);
+});
+
+componentsRouter.delete("/components/:id/fields/:fieldId", async (req, res) => {
+  const ctx = (req as { auth?: unknown }).auth;
+  if (ctx && !(await requirePermission(ctx as Parameters<typeof requirePermission>[0], "component", "update"))) return res.status(403).json({ error: "Forbidden" });
+  const field = await deleteField(req.params.fieldId);
+  if (!field) return res.status(404).json({ error: "Not found" });
+  res.status(204).end();
 });
