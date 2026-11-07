@@ -69,6 +69,8 @@ function ContentInner() {
   const [saveError, setSaveError] = useState<unknown>(null);
   const [schemaWarning, setSchemaWarning] = useState<string | null>(null);
   const [currentType, setCurrentType] = useState<RegistryView | null>(null);
+  const [detailError, setDetailError] = useState<unknown>(null);
+  const [detailNonce, setDetailNonce] = useState(0);
 
   const type: RegistryView | undefined = useMemo(
     () => types.find((t) => t.id === contentTypeId || t.name === contentTypeId),
@@ -76,29 +78,42 @@ function ContentInner() {
   );
 
   // Resolve the working type: the registry list rows lack fields, so fetch
-  // the detail (fields + activeSchemaVersion) when selected.
+  // the detail (fields + activeSchemaVersion) when selected. The list row
+  // is intentionally NEVER assigned to currentType: rendering SchemaTable /
+  // SchemaForm with a field-less row throws `type.fields is not iterable`.
+  // A failed detail fetch leaves the previous type's fields stale-but-valid
+  // and surfaces the error with a retry instead of corrupting the render.
   useEffect(() => {
     if (!contentTypeId) {
       setCurrentType(null);
+      setDetailError(null);
       return;
     }
     let live = true;
-    const cached = types.find((t) => (t.id === contentTypeId || t.name === contentTypeId) && t.fields?.length);
-    if (cached) {
-      setCurrentType(cached);
+    const selected = types.find((t) => t.id === contentTypeId || t.name === contentTypeId);
+    if (selected?.fields?.length) {
+      setCurrentType(selected);
+      setDetailError(null);
       return;
     }
+    setDetailError(null);
     getContentType(contentTypeId)
       .then((t) => {
-        if (live) setCurrentType(t);
+        if (live) {
+          setCurrentType(t);
+          setDetailError(null);
+        }
       })
-      .catch(() => {
-        if (live) setCurrentType(type ?? null);
+      .catch((e) => {
+        if (live) setDetailError(e);
       });
     return () => {
       live = false;
     };
-  }, [contentTypeId, types, type]);
+    // detailNonce re-runs the fetch for the retry action; `type` is read
+    // inside but must not reset an in-flight detail fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentTypeId, types, detailNonce]);
 
   const canPublish = can("document.publish");
   const showPublish = (currentType ?? type)?.hasDraftPublish !== false;
@@ -256,7 +271,15 @@ function ContentInner() {
   if (registryLoading) return <LoadingState label="Loading registry…" />;
   if (registryError) return <ErrorState error={registryError} onRetry={reloadRegistry} />;
 
-  const workingType = currentType ?? type ?? null;
+  // workingType is ONLY a detail row (fields present). The registry list row
+  // (`type`) never renders: it lacks `fields`, and spreading it into
+  // SchemaTable/SchemaForm throws `type.fields is not iterable`.
+  const selectionKnown = type ?? null;
+  const currentMatches =
+    currentType && (currentType.id === contentTypeId || currentType.name === contentTypeId)
+      ? currentType
+      : null;
+  const workingType = currentMatches;
   const activeId = docId ?? doc.row?.id ?? null;
   const status = statusOf(doc.row);
 
@@ -289,8 +312,12 @@ function ContentInner() {
 
       {!contentTypeId ? (
         <p style={{ color: "#555" }}>Select a content type to list and edit documents.</p>
-      ) : !workingType ? (
+      ) : !selectionKnown ? (
         <ErrorState error={new Error(`Unknown content type "${contentTypeId}".`)} />
+      ) : detailError && !workingType ? (
+        <ErrorState error={detailError} onRetry={() => setDetailNonce((n) => n + 1)} />
+      ) : !workingType ? (
+        <LoadingState label="Loading schema…" />
       ) : (
         <>
           {workingType.kind === "single" ? (
